@@ -41,8 +41,8 @@ export function RegisterPage() {
     try {
       const timeoutError = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error(
-          'Connection timed out. Your Supabase project may be paused — visit the Supabase dashboard to resume it, then try again.'
-        )), 15000)
+          'Request timed out. Please check your internet connection and try again.'
+        )), 20000)
       );
       const result = await Promise.race([registerAccount({
         role,

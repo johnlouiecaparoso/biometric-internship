@@ -115,11 +115,12 @@ export async function registerAccount(payload: {
         };
         const profile = await ensureProfileExists(userWithCorrectRole);
         if (!profile) {
-          // Profile couldn't be linked — sign out and surface a clear error.
-          await supabase.auth.signOut();
+          // Profile couldn't be linked — sign out (fire-and-forget, don't await
+          // or it hangs for 15s) and surface a clear error.
+          supabase.auth.signOut().catch(() => {});
           throw new Error(
-            'Your account already exists but the profile could not be linked. ' +
-            'Please run the SQL fix in your Supabase dashboard (supabase-fix-signup.sql), then try logging in.'
+            'Your account exists but its profile could not be linked. ' +
+            'Please ask your administrator to run the SQL fix, then sign in from the Login page.'
           );
         }
         return { requiresEmailVerification: false, alreadySignedIn: true };

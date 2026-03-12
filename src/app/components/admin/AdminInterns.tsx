@@ -98,8 +98,8 @@ export function AdminInterns() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
@@ -171,6 +171,54 @@ export function AdminInterns() {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card List */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No interns found</p>
+            </div>
+          ) : (
+            filtered.map(intern => {
+              const sc = statusConfig[intern.status];
+              return (
+                <div key={intern.id} className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-700 text-sm" style={{ fontWeight: 700 }}>
+                      {intern.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-gray-800 text-sm truncate" style={{ fontWeight: 600 }}>{intern.name}</p>
+                      <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${sc.badge}`} style={{ fontWeight: 600 }}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                        {sc.label}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-xs mt-0.5">{intern.studentId} · {intern.department}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${getProgressColor(intern.progress)}`}
+                          style={{ width: `${intern.progress}%` }}
+                        />
+                      </div>
+                      <span className="text-gray-500 text-xs flex-shrink-0">{intern.progress}% · {intern.renderedHours}/{intern.requiredHours}h</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelected(intern)}
+                    className="flex-shrink-0 p-2 rounded-xl hover:bg-blue-50 text-blue-600 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })
+          )}
         </div>
         <div className="px-4 py-3 border-t border-gray-100">
           <p className="text-gray-400 text-xs">Showing {filtered.length} of {internProfiles.length} interns</p>

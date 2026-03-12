@@ -98,8 +98,8 @@ export function InternHistory() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
@@ -151,8 +151,41 @@ export function InternHistory() {
           </table>
         </div>
 
+        {/* Mobile Card List */}
+        <div className="sm:hidden divide-y divide-gray-100">
+          {paged.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">
+              <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No records found</p>
+            </div>
+          ) : (
+            paged.map((rec: AttendanceRecord) => (
+              <div key={rec.id} className="flex items-center justify-between px-4 py-3.5">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-gray-800 text-sm" style={{ fontWeight: 600 }}>
+                      {new Date(rec.date).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </p>
+                    <p className="text-gray-500 text-xs tabular-nums">
+                      {rec.timeIn ?? '–'} → {rec.timeOut ?? '–'}
+                      {rec.hoursRendered > 0 && <span className="ml-1.5 text-blue-600" style={{ fontWeight: 500 }}>{rec.hoursRendered}h</span>}
+                    </p>
+                  </div>
+                </div>
+                <span className={`ml-3 flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs capitalize ${statusStyles[rec.status].badge}`} style={{ fontWeight: 600 }}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusStyles[rec.status].dot}`} />
+                  {rec.status}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
         {/* Pagination */}
-        <div className="px-5 py-3.5 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-4 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <p className="text-gray-500 text-xs">
             Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} records
             <span className="ml-2 text-blue-600" style={{ fontWeight: 500 }}>· Total: {totalHours.toFixed(1)}h rendered</span>

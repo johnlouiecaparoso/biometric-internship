@@ -179,7 +179,8 @@ export function AdminReports() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        {/* Desktop Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
@@ -238,6 +239,52 @@ export function AdminReports() {
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        {/* Mobile Card List */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {filteredInterns.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm">No interns found</div>
+          ) : (
+            filteredInterns.map(intern => (
+              <div key={intern.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-gray-800 text-sm truncate" style={{ fontWeight: 600 }}>{intern.name}</p>
+                    <p className="text-gray-400 text-xs">{intern.studentId} · {intern.department}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      intern.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                      intern.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-500'
+                    }`} style={{ fontWeight: 600 }}>
+                      {intern.status}
+                    </span>
+                    {intern.presentToday
+                      ? <span className="text-emerald-600 text-xs" style={{ fontWeight: 600 }}>✓ Present</span>
+                      : <span className="text-red-400 text-xs">✗ Absent</span>
+                    }
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${intern.progress >= 100 ? 'bg-emerald-500' : intern.progress >= 75 ? 'bg-blue-500' : 'bg-amber-500'}`}
+                      style={{ width: `${intern.progress}%` }}
+                    />
+                  </div>
+                  <span className="text-gray-500 text-xs flex-shrink-0">{intern.progress}%</span>
+                </div>
+                <p className="text-gray-500 text-xs">{intern.renderedHours}h rendered · {intern.requiredHours}h required · {Math.max(0, intern.requiredHours - intern.renderedHours)}h remaining</p>
+              </div>
+            ))
+          )}
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+            <p className="text-gray-600 text-xs" style={{ fontWeight: 600 }}>
+              Totals: {filteredInterns.reduce((s, i) => s + i.requiredHours, 0)}h required · {totalHours}h rendered · Avg {avgProgress}% · {completed} completed
+            </p>
+          </div>
         </div>
       </div>
     </div>

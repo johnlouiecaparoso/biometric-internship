@@ -26,16 +26,24 @@ export function InternSettings() {
   const { user } = useAuth();
   const { requestBrowserPermission, browserPermission, updateBrowserEnabled } = useNotifications();
   const { setDisplay: setDisplayCtx } = useDisplaySettings();
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [logoutBusy, setLogoutBusy] = useState(false);
-  const [logoutMsg, setLogoutMsg] = useState('');
+
   const [notifs, setNotifs] = useState({ email: true, sms: false, browser: true, reminderTimeIn: true, reminderTimeOut: true, weeklyReport: false });
   const [bio, setBio] = useState({ fingerprint: true, faceId: false, fallbackPin: true });
   const [display, setDisplay] = useState({ compactView: false, darkMode: false, show24h: false });
+
+  const [notifsDirty, setNotifsDirty] = useState(false);
+  const [bioDirty, setBioDirty] = useState(false);
+  const [displayDirty, setDisplayDirty] = useState(false);
+
+  const [savingSection, setSavingSection] = useState<'notifs' | 'bio' | 'display' | null>(null);
+  const [savedSection, setSavedSection] = useState<'notifs' | 'bio' | 'display' | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const [biometricBusy, setBiometricBusy] = useState(false);
   const [biometricCredentialId, setBiometricCredentialId] = useState<string | null>(null);
   const [biometricMsg, setBiometricMsg] = useState('');
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutMsg, setLogoutMsg] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -47,11 +55,33 @@ export function InternSettings() {
         setDisplay((prev) => ({ ...prev, ...(data.display ?? {}) }));
       })
       .catch(() => null);
-
     fetchBiometricSettings(user.id)
       .then((settings) => setBiometricCredentialId(settings?.credentialId ?? null))
       .catch(() => setBiometricCredentialId(null));
   }, [user]);
+
+  // Section-aware updaters — mark the section dirty when anything changes
+  const updateNotifs  = (fn: (n: typeof notifs)   => typeof notifs)  => { setNotifs(fn);   setNotifsDirty(true);  };
+  const updateBio     = (fn: (b: typeof bio)       => typeof bio)     => { setBio(fn);      setBioDirty(true);     };
+  const updateDisplay = (fn: (d: typeof display)   => typeof display) => { setDisplay(fn);  setDisplayDirty(true); };
+
+  const handleSaveSection = async (sec: 'notifs' | 'bio' | 'display') => {
+    if (!user) return;
+    setSavingSection(sec);
+    setSaveError(null);
+    try {
+      await saveUserSettings(user.id, { notifications: notifs, biometric: bio, display });
+      if (sec === 'notifs')  { setNotifsDirty(false);  updateBrowserEnabled(notifs.browser); }
+      if (sec === 'bio')       setBioDirty(false);
+      if (sec === 'display') { setDisplayDirty(false); setDisplayCtx({ compactView: display.compactView, show24h: display.show24h, darkMode: display.darkMode }); }
+      setSavedSection(sec);
+      setTimeout(() => setSavedSection((s) => (s === sec ? null : s)), 2000);
+    } catch (err: any) {
+      setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
+    } finally {
+      setSavingSection(null);
+    }
+  };
 
   const handleEnrollBiometric = async () => {
     if (!user) return;
@@ -64,7 +94,6 @@ export function InternSettings() {
         displayName: user.name,
         existingCredentialId: biometricCredentialId ?? undefined,
       });
-
       await saveBiometricCredential(user.id, credentialId);
       setBiometricCredentialId(credentialId);
       setBiometricMsg('Biometric device enrolled successfully.');
@@ -72,22 +101,6 @@ export function InternSettings() {
       setBiometricMsg(e?.message ?? 'Biometric enrollment failed.');
     } finally {
       setBiometricBusy(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!user) return;
-    setSaveError(null);
-    try {
-      await saveUserSettings(user.id, { notifications: notifs, biometric: bio, display });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-      // Propagate display changes to the context so they take effect immediately
-      setDisplayCtx({ compactView: display.compactView, show24h: display.show24h, darkMode: display.darkMode });
-      // Propagate browser notification preference immediately (no page reload needed)
-      updateBrowserEnabled(notifs.browser);
-    } catch (err: any) {
-      setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
     }
   };
 
@@ -104,7 +117,31 @@ export function InternSettings() {
     }
   };
 
-  const section = (title: string, icon: React.ReactNode, children: React.ReactNode) => (
+  // Renders a Save button (or "Saved" flash) at the bottom of a section
+  const sectionFooter = (key: 'notifs' | 'bio' | 'display', isDirty: boolean) => {
+    if (!isDirty && savedSection !== key) return null;
+    return (
+      <div className="pt-3 mt-1 border-t border-gray-100 flex justify-end items-center gap-3">
+        {savedSection === key && !isDirty && (
+          <span className="flex items-center gap-1.5 text-emerald-600 text-xs" style={{ fontWeight: 500 }}>
+            <CheckCircle2 className="w-3.5 h-3.5" /> Saved
+          </span>
+        )}
+        {isDirty && (
+          <button
+            onClick={() => handleSaveSection(key)}
+            disabled={savingSection === key}
+            className="bg-[#0f2a4e] hover:bg-[#1a3f6f] disabled:opacity-50 text-white text-xs px-4 py-1.5 rounded-lg transition-colors"
+            style={{ fontWeight: 600 }}
+          >
+            {savingSection === key ? 'Saving...' : 'Save'}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const section = (title: string, icon: React.ReactNode, children: React.ReactNode, footer?: React.ReactNode) => (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
       <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-gray-100">
         <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
@@ -113,6 +150,7 @@ export function InternSettings() {
         <h3 className="text-gray-800" style={{ fontWeight: 600 }}>{title}</h3>
       </div>
       <div className="space-y-3">{children}</div>
+      {footer}
     </div>
   );
 
@@ -133,13 +171,6 @@ export function InternSettings() {
         <p className="text-gray-500 text-sm">Manage your preferences and account settings</p>
       </div>
 
-      {saved && (
-        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-emerald-700 text-sm">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-          Settings saved successfully!
-        </div>
-      )}
-
       {saveError && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3.5 text-red-700 text-sm">
           <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-red-500" />
@@ -148,22 +179,22 @@ export function InternSettings() {
       )}
 
       {section('Notifications', <Bell className="w-4 h-4" />, <>
-        {row('Email Notifications', 'Receive attendance updates via email', notifs.email, () => setNotifs(n => ({ ...n, email: !n.email })))}
-        {row('SMS Notifications', 'Get SMS alerts for important events', notifs.sms, () => setNotifs(n => ({ ...n, sms: !n.sms })))}
+        {row('Email Notifications', 'Receive attendance updates via email', notifs.email, () => updateNotifs(n => ({ ...n, email: !n.email })))}
+        {row('SMS Notifications', 'Get SMS alerts for important events', notifs.sms, () => updateNotifs(n => ({ ...n, sms: !n.sms })))}
         {row('Browser Notifications', 'Show browser push notifications', notifs.browser, () => {
           const next = !notifs.browser;
-          setNotifs(n => ({ ...n, browser: next }));
+          updateNotifs(n => ({ ...n, browser: next }));
           if (next && browserPermission !== 'granted') requestBrowserPermission();
         })}
-        {row('Time In Reminder', 'Remind me to time in at start of work', notifs.reminderTimeIn, () => setNotifs(n => ({ ...n, reminderTimeIn: !n.reminderTimeIn })))}
-        {row('Time Out Reminder', 'Remind me to time out before end of work', notifs.reminderTimeOut, () => setNotifs(n => ({ ...n, reminderTimeOut: !n.reminderTimeOut })))}
-        {row('Weekly Report', 'Receive weekly attendance summary', notifs.weeklyReport, () => setNotifs(n => ({ ...n, weeklyReport: !n.weeklyReport })))}
-      </>)}
+        {row('Time In Reminder', 'Remind me to time in at start of work', notifs.reminderTimeIn, () => updateNotifs(n => ({ ...n, reminderTimeIn: !n.reminderTimeIn })))}
+        {row('Time Out Reminder', 'Remind me to time out before end of work', notifs.reminderTimeOut, () => updateNotifs(n => ({ ...n, reminderTimeOut: !n.reminderTimeOut })))}
+        {row('Weekly Report', 'Receive weekly attendance summary', notifs.weeklyReport, () => updateNotifs(n => ({ ...n, weeklyReport: !n.weeklyReport })))}
+      </>, sectionFooter('notifs', notifsDirty))}
 
       {section('Biometric Preferences', <Fingerprint className="w-4 h-4" />, <>
-        {row('Fingerprint Authentication', 'Use fingerprint scanner for time in/out', bio.fingerprint, () => setBio(b => ({ ...b, fingerprint: !b.fingerprint })))}
-        {row('Face ID Authentication', 'Use facial recognition for time in/out', bio.faceId, () => setBio(b => ({ ...b, faceId: !b.faceId })))}
-        {row('Fallback PIN', 'Allow PIN entry if biometric fails', bio.fallbackPin, () => setBio(b => ({ ...b, fallbackPin: !b.fallbackPin })))}
+        {row('Fingerprint Authentication', 'Use fingerprint scanner for time in/out', bio.fingerprint, () => updateBio(b => ({ ...b, fingerprint: !b.fingerprint })))}
+        {row('Face ID Authentication', 'Use facial recognition for time in/out', bio.faceId, () => updateBio(b => ({ ...b, faceId: !b.faceId })))}
+        {row('Fallback PIN', 'Allow PIN entry if biometric fails', bio.fallbackPin, () => updateBio(b => ({ ...b, fallbackPin: !b.fallbackPin })))}
         <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
           <p className="text-gray-700 text-xs mb-2" style={{ fontWeight: 600 }}>Device Enrollment</p>
           <p className="text-gray-500 text-xs mb-3">
@@ -181,17 +212,15 @@ export function InternSettings() {
           >
             {biometricBusy ? 'Waiting for device...' : biometricCredentialId ? 'Re-enroll Device' : 'Enroll Device'}
           </button>
-          {biometricMsg && (
-            <p className="text-xs mt-2 text-gray-600">{biometricMsg}</p>
-          )}
+          {biometricMsg && <p className="text-xs mt-2 text-gray-600">{biometricMsg}</p>}
         </div>
-      </>)}
+      </>, sectionFooter('bio', bioDirty))}
 
       {section('Display', <Monitor className="w-4 h-4" />, <>
-        {row('Compact View', 'Show more data with less spacing', display.compactView, () => setDisplay(d => ({ ...d, compactView: !d.compactView })))}
-        {row('Dark Mode', 'Switch the app to a dark colour scheme', display.darkMode, () => setDisplay(d => ({ ...d, darkMode: !d.darkMode })))}
-        {row('24-Hour Time Format', 'Display time in 24-hour format', display.show24h, () => setDisplay(d => ({ ...d, show24h: !d.show24h })))}
-      </>)}
+        {row('Compact View', 'Show more data with less spacing', display.compactView, () => updateDisplay(d => ({ ...d, compactView: !d.compactView })))}
+        {row('Dark Mode', 'Switch the app to a dark colour scheme', display.darkMode, () => updateDisplay(d => ({ ...d, darkMode: !d.darkMode })))}
+        {row('24-Hour Time Format', 'Display time in 24-hour format', display.show24h, () => updateDisplay(d => ({ ...d, show24h: !d.show24h })))}
+      </>, sectionFooter('display', displayDirty))}
 
       {section('Security', <Shield className="w-4 h-4" />, <>
         <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
@@ -210,16 +239,6 @@ export function InternSettings() {
           {logoutMsg && <p className="text-xs mt-2 text-gray-500">{logoutMsg}</p>}
         </div>
       </>)}
-
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          className="bg-[#0f2a4e] hover:bg-[#1a3f6f] text-white px-6 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
-          style={{ fontWeight: 600 }}
-        >
-          Save Settings
-        </button>
-      </div>
     </div>
   );
 }

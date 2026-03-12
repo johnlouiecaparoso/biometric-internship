@@ -109,7 +109,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f2a4e] via-[#1a4478] to-[#0f2a4e] flex items-center justify-center p-4">
+    <div className="min-h-screen overflow-hidden bg-gradient-to-br from-[#0f2a4e] via-[#1a4478] to-[#0f2a4e] flex items-center justify-center p-4">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute top-20 left-20 w-96 h-96 bg-blue-400 rounded-full blur-3xl" />

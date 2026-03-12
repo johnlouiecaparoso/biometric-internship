@@ -2,6 +2,11 @@
 @import './tailwind.css';
 @import './theme.css';
 
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 * {
   font-family: 'Inter', sans-serif;
 }

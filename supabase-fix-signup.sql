@@ -1,4 +1,60 @@
 -- =============================================================================
+-- !! RUN THIS FIRST — Fixes 409 Conflict + "Account profile not found" errors !!
+-- Supabase Dashboard → SQL Editor → New query → paste below → Run
+-- =============================================================================
+
+-- 1. Recreate the reclaim RPC (SECURITY DEFINER so it bypasses RLS)
+CREATE OR REPLACE FUNCTION public.reclaim_profile_for_current_user()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email text;
+  v_meta  jsonb;
+BEGIN
+  SELECT email, raw_user_meta_data INTO v_email, v_meta
+  FROM auth.users WHERE id = auth.uid();
+
+  IF v_email IS NULL OR v_email = '' THEN RETURN; END IF;
+
+  UPDATE public.profiles
+  SET
+    auth_user_id = auth.uid(),
+    is_active    = true,
+    role         = COALESCE(NULLIF(v_meta->>'role', ''),       role),
+    full_name    = COALESCE(NULLIF(v_meta->>'full_name', ''),  full_name),
+    student_id   = COALESCE(NULLIF(v_meta->>'student_id', ''), student_id),
+    department   = COALESCE(v_meta->>'department', department),
+    course       = CASE WHEN v_meta->>'role' = 'intern'
+                        THEN COALESCE(v_meta->>'course', course)
+                        ELSE null END,
+    year_level   = CASE WHEN v_meta->>'role' = 'intern'
+                        THEN COALESCE(v_meta->>'year_level', year_level)
+                        ELSE null END
+  WHERE email = v_email;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.reclaim_profile_for_current_user() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.reclaim_profile_for_current_user() TO service_role;
+
+-- 2. Email-based reclaim RLS policy (lets the current user re-link an orphaned profile)
+DROP POLICY IF EXISTS "profiles_update_reclaim_by_email" ON public.profiles;
+CREATE POLICY "profiles_update_reclaim_by_email"
+  ON public.profiles FOR UPDATE TO authenticated
+  USING  (email = (auth.jwt() ->> 'email'))
+  WITH CHECK (auth.uid() = auth_user_id);
+
+-- 3. Fix orphaned profiles whose auth_user_id is NULL (trigger may have set it wrong)
+-- Safe to run — only targets rows with no linked auth user
+UPDATE public.profiles p
+SET auth_user_id = u.id
+FROM auth.users u
+WHERE p.email = u.email
+  AND p.auth_user_id IS NULL;
+
+-- =============================================================================
 -- Fix "Database error saving new user" on signup (Supabase Auth)
 -- Run this in: Supabase Dashboard → SQL Editor → New query
 -- =============================================================================
@@ -168,11 +224,13 @@ CREATE POLICY "profiles_update_own"
   USING (auth.uid() = auth_user_id)
   WITH CHECK (auth.uid() = auth_user_id);
 
+DROP POLICY IF EXISTS "profiles_update_reclaim_by_email" ON public.profiles;
 CREATE POLICY "profiles_update_reclaim_by_email"
   ON public.profiles FOR UPDATE TO authenticated
   USING (email = (auth.jwt() ->> 'email'))
   WITH CHECK (auth.uid() = auth_user_id);
 
+DROP POLICY IF EXISTS "profiles_select_own" ON public.profiles;
 CREATE POLICY "profiles_select_own"
   ON public.profiles FOR SELECT TO authenticated
   USING (auth.uid() = auth_user_id);

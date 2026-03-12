@@ -101,7 +101,6 @@ export async function registerAccount(payload: {
 
       if (!signInError && signInData?.user) {
         // Sign-in worked — make sure a profile row exists with correct role from payload
-        // Create a fake user object with the correct metadata
         const userWithCorrectRole = {
           ...signInData.user,
           user_metadata: {
@@ -114,7 +113,15 @@ export async function registerAccount(payload: {
             year_level: payload.yearLevel ?? '',
           }
         };
-        await ensureProfileExists(userWithCorrectRole);
+        const profile = await ensureProfileExists(userWithCorrectRole);
+        if (!profile) {
+          // Profile couldn't be linked — sign out and surface a clear error.
+          await supabase.auth.signOut();
+          throw new Error(
+            'Your account already exists but the profile could not be linked. ' +
+            'Please run the SQL fix in your Supabase dashboard (supabase-fix-signup.sql), then try logging in.'
+          );
+        }
         return { requiresEmailVerification: false, alreadySignedIn: true };
       }
 
@@ -342,19 +349,24 @@ export async function ensureProfileExists(authUser: { id: string; email?: string
         updatePayload.year_level = null;
       }
 
-      const { error: reclaimError } = await supabase
+      const { data: reclaimedByEmail, error: reclaimError } = await supabase
         .from('profiles')
         .update(updatePayload)
-        .eq('email', email);
+        .eq('email', email)
+        .select('id');
 
-      if (reclaimError) {
-        const { error: rpcError } = await supabase.rpc('reclaim_profile_for_current_user');
-        if (!rpcError) {
-          return fetchCurrentUser({ id: authUser.id });
-        }
-        return null;
+      // If update returned at least one row, the profile is now linked.
+      if (!reclaimError && reclaimedByEmail && reclaimedByEmail.length > 0) {
+        return fetchCurrentUser({ id: authUser.id });
       }
-      return fetchCurrentUser({ id: authUser.id });
+
+      // Direct update returned 0 rows (RLS blocked it) — try the SECURITY DEFINER RPC.
+      const { error: rpcError } = await supabase.rpc('reclaim_profile_for_current_user');
+      if (!rpcError) {
+        return fetchCurrentUser({ id: authUser.id });
+      }
+
+      return null;
     } else if (isDuplicateStudentId) {
       // Same student_id already in use — try reclaim by student_id (link row to this auth user).
       const studentId = meta.student_id ?? '';

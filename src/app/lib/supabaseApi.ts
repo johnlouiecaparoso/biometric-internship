@@ -164,12 +164,11 @@ export async function registerAccount(payload: {
     if (profileError) {
       const code = (profileError as any).code;
       const msg = profileError.message || '';
-      const isDuplicateStudentId = code === '23505' && (msg.includes('profiles_student_id_key') || msg.includes('student_id'));
-      const isDuplicateEmail = code === '23505' && (msg.includes('profiles_email_key') || msg.includes('duplicate key') || msg.includes('email'));
+      const isDupKey = code === '23505';
+      const isDuplicateStudentId = isDupKey && (msg.includes('profiles_student_id_key') || msg.includes('student_id'));
+      const isDuplicateEmail = isDupKey && (msg.includes('profiles_email_key') || msg.includes('email'));
 
-      if (isDuplicateStudentId || isDuplicateEmail) {
-        // Reclaim: re-link the existing profile to this auth user AND update all fields
-        // so the role, name, and ID match what the user just registered with.
+      if (isDupKey) {
         const reclaimPayload: Record<string, any> = {
           auth_user_id: authUserId,
           is_active: true,
@@ -180,25 +179,48 @@ export async function registerAccount(payload: {
           course: payload.role === 'intern' ? (payload.course ?? '') : null,
           year_level: payload.role === 'intern' ? (payload.yearLevel ?? '') : null,
         };
-        const { data: reclaimed, error: reclaimError } = await supabase
+
+        // 1. Reclaim by auth_user_id — handles trigger-created profiles (most common case).
+        //    RLS allows updating a row where auth_user_id = auth.uid(), so no privilege needed.
+        const { data: byAuthId } = await supabase
+          .from('profiles')
+          .update(reclaimPayload)
+          .eq('auth_user_id', authUserId)
+          .select('id');
+        if (byAuthId && byAuthId.length > 0) return { requiresEmailVerification: false };
+
+        // 2. Reclaim by email — handles leftover profiles from a previous registration.
+        const { data: byEmail } = await supabase
           .from('profiles')
           .update(reclaimPayload)
           .eq('email', payload.email)
           .select('id');
+        if (byEmail && byEmail.length > 0) return { requiresEmailVerification: false };
 
-        if (!reclaimError && reclaimed && reclaimed.length > 0) {
-          return { requiresEmailVerification: false };
+        // 3. Reclaim by student_id — handles student_id-specific conflicts.
+        if (isDuplicateStudentId && payload.studentId) {
+          const { data: byStudentId } = await supabase
+            .from('profiles')
+            .update(reclaimPayload)
+            .eq('student_id', payload.studentId)
+            .select('id');
+          if (byStudentId && byStudentId.length > 0) return { requiresEmailVerification: false };
         }
-        // Direct reclaim failed or 0 rows — try RPC (works with elevated privileges).
+
+        // 4. Last resort: privileged RPC (may not exist — 400 is non-fatal here).
         const { error: rpcError } = await supabase.rpc('reclaim_profile_for_current_user');
-        if (!rpcError) {
-          return { requiresEmailVerification: false };
-        }
-        // Reclaim failed — show friendly error.
+        if (!rpcError) return { requiresEmailVerification: false };
+
+        // 5. All reclaim attempts failed. The auth user WAS created, so return success
+        //    for auth_user_id conflicts (trigger race). Only throw for true duplicates.
         if (isDuplicateStudentId) {
-          throw new Error('This student ID is already registered. Use a different one or sign in.');
+          throw new Error('This student ID is already registered under a different account. Please sign in or use a different student ID.');
         }
-        throw new Error('This email is already registered. Please sign in or use a different email.');
+        if (isDuplicateEmail) {
+          throw new Error('This email is already registered. Please sign in or use a different email.');
+        }
+        // Auth_user_id conflict — trigger already created the profile, treat as success.
+        return { requiresEmailVerification: false };
       }
 
       // Not fatal — auth user was created. ensureProfileExists() will retry on login.

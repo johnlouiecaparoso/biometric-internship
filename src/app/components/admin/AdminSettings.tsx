@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Settings, Clock, Bell, Shield, Users, CheckCircle2, XCircle } from 'lucide-react';
+import { Settings, Clock, Bell, Shield, Users, Monitor, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
+import { useDisplaySettings } from '../../context/DisplaySettingsContext';
 import { useNotifications } from '../../context/NotificationsContext';
-import { fetchSystemSettings, saveSystemSettings, fetchSystemInfoStats } from '../../lib/supabaseApi';
+import { fetchSystemSettings, saveSystemSettings, fetchSystemInfoStats, fetchUserSettings, saveUserSettings } from '../../lib/supabaseApi';
 
 interface ToggleProps { checked: boolean; onChange: () => void; }
 function Toggle({ checked, onChange }: ToggleProps) {
@@ -17,17 +18,20 @@ function Toggle({ checked, onChange }: ToggleProps) {
 export function AdminSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { setDisplay: setDisplayCtx } = useDisplaySettings();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const DEFAULT_SCHEDULE = { timeIn: '08:00', timeOut: '17:00', graceMinutes: '15', undertimeMinutes: '60' };
   const DEFAULT_NOTIFS   = { absenceAlert: true, lateAlert: true, completionAlert: true, weeklyReport: true, pendingRequest: true };
   const DEFAULT_SYSTEM   = { allowCorrections: true, requireSupervisor: true, autoApprove: false, biometricOnly: false };
+  const DEFAULT_DISPLAY  = { compactView: false, darkMode: false, show24h: false };
 
   const [schedule, setSchedule] = useState(DEFAULT_SCHEDULE);
-  const { requestBrowserPermission, browserPermission } = useNotifications();
+  const { requestBrowserPermission, browserPermission, updateBrowserEnabled } = useNotifications();
   const [notifs, setNotifs] = useState(DEFAULT_NOTIFS);
   const [system, setSystem] = useState(DEFAULT_SYSTEM);
+  const [display, setDisplay] = useState(DEFAULT_DISPLAY);
   const [sysInfo, setSysInfo] = useState({ activeInterns: 0, totalRecords: 0, adminCount: 0 });
 
   useEffect(() => {
@@ -40,10 +44,18 @@ export function AdminSettings() {
       })
       .catch(() => null);
 
+    if (user) {
+      fetchUserSettings(user.id)
+        .then((data) => {
+          if (data?.display) setDisplay((prev) => ({ ...prev, ...data.display }));
+        })
+        .catch(() => null);
+    }
+
     fetchSystemInfoStats()
       .then((stats) => setSysInfo(stats))
       .catch(() => null);
-  }, []);
+  }, [user]);
 
   const handleSave = async () => {
     setSaveError(null);
@@ -54,8 +66,21 @@ export function AdminSettings() {
         policies: system,
         updatedByProfileId: user?.id,
       });
+      if (user) {
+        // Load existing user settings first so we don't overwrite biometric/notif prefs
+        const existing = await fetchUserSettings(user.id).catch(() => null);
+        await saveUserSettings(user.id, {
+          notifications: existing?.notifications ?? {},
+          biometric: existing?.biometric ?? {},
+          display,
+        });
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      // Propagate display changes to context immediately
+      setDisplayCtx({ compactView: display.compactView, show24h: display.show24h, darkMode: display.darkMode });
+      // Propagate notification pref
+      updateBrowserEnabled(!!(notifs as any).pendingRequest);
     } catch (err: any) {
       setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
     }
@@ -65,6 +90,7 @@ export function AdminSettings() {
     setSchedule(DEFAULT_SCHEDULE);
     setNotifs(DEFAULT_NOTIFS);
     setSystem(DEFAULT_SYSTEM);
+    setDisplay(DEFAULT_DISPLAY);
   };
 
   const section = (title: string, icon: React.ReactNode, children: React.ReactNode) => (
@@ -156,6 +182,12 @@ export function AdminSettings() {
         {row('Require Supervisor Approval', 'Correction requests need supervisor sign-off', system.requireSupervisor, () => setSystem(s => ({ ...s, requireSupervisor: !s.requireSupervisor })))}
         {row('Auto-Approve Minor Corrections', 'Automatically approve small time adjustments (<15 min)', system.autoApprove, () => setSystem(s => ({ ...s, autoApprove: !s.autoApprove })))}
         {row('Biometric Only Mode', 'Disable manual time logging, require biometric only', system.biometricOnly, () => setSystem(s => ({ ...s, biometricOnly: !s.biometricOnly })))}
+      </>)}
+
+      {section('Display', <Monitor className="w-4 h-4" />, <>
+        {row('Compact View', 'Show more data with less spacing', display.compactView, () => setDisplay(d => ({ ...d, compactView: !d.compactView })))}
+        {row('Dark Mode', 'Switch the app to a dark colour scheme', display.darkMode, () => setDisplay(d => ({ ...d, darkMode: !d.darkMode })))}
+        {row('24-Hour Time Format', 'Display times in 24-hour format', display.show24h, () => setDisplay(d => ({ ...d, show24h: !d.show24h })))}
       </>)}
 
       {section('Security & Access', <Shield className="w-4 h-4" />, <>

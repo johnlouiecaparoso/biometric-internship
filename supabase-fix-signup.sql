@@ -3,7 +3,13 @@
 -- Supabase Dashboard → SQL Editor → New query → paste below → Run
 -- =============================================================================
 
--- 1. Recreate the reclaim RPC (SECURITY DEFINER so it bypasses RLS)
+-- Ensure user_settings has all required JSONB columns (safe to run multiple times)
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS notifications JSONB DEFAULT '{}'::JSONB;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS biometric    JSONB DEFAULT '{}'::JSONB;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS display      JSONB DEFAULT '{}'::JSONB;
+
+-- =============================================================================
+
 CREATE OR REPLACE FUNCTION public.reclaim_profile_for_current_user()
 RETURNS void
 LANGUAGE plpgsql

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router';
 import { useAuth, UserRole } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationsContext';
+import { useDisplaySettings } from '../context/DisplaySettingsContext';
 import {
   LayoutDashboard, Fingerprint, CalendarDays, FileEdit, BarChart3,
   User, Settings, LogOut, GraduationCap, Users, Menu, X, Bell, ChevronRight,
@@ -38,6 +39,7 @@ interface AppLayoutProps {
 export function AppLayout({ role }: AppLayoutProps) {
   const { user, logout, isAuthenticated, loading } = useAuth();
   const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
+  const { formatShortTime: ctxShortTime } = useDisplaySettings();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -74,8 +76,7 @@ export function AppLayout({ role }: AppLayoutProps) {
     navigate('/login', { replace: true });
   };
 
-  const formatTime = (d: Date) =>
-    d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const formatTime = (d: Date) => ctxShortTime(d);
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });

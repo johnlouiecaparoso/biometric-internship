@@ -24,7 +24,7 @@ function Toggle({ checked, onChange }: ToggleProps) {
 
 export function InternSettings() {
   const { user } = useAuth();
-  const { requestBrowserPermission, browserPermission } = useNotifications();
+  const { requestBrowserPermission, browserPermission, updateBrowserEnabled } = useNotifications();
   const { setDisplay: setDisplayCtx } = useDisplaySettings();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,6 +84,8 @@ export function InternSettings() {
       setTimeout(() => setSaved(false), 3000);
       // Propagate display changes to the context so they take effect immediately
       setDisplayCtx({ compactView: display.compactView, show24h: display.show24h, darkMode: display.darkMode });
+      // Propagate browser notification preference immediately (no page reload needed)
+      updateBrowserEnabled(notifs.browser);
     } catch (err: any) {
       setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
     }
@@ -187,6 +189,7 @@ export function InternSettings() {
 
       {section('Display', <Monitor className="w-4 h-4" />, <>
         {row('Compact View', 'Show more data with less spacing', display.compactView, () => setDisplay(d => ({ ...d, compactView: !d.compactView })))}
+        {row('Dark Mode', 'Switch the app to a dark colour scheme', display.darkMode, () => setDisplay(d => ({ ...d, darkMode: !d.darkMode })))}
         {row('24-Hour Time Format', 'Display time in 24-hour format', display.show24h, () => setDisplay(d => ({ ...d, show24h: !d.show24h })))}
       </>)}
 

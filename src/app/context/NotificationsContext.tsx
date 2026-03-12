@@ -19,6 +19,7 @@ interface NotificationsContextType {
   requestBrowserPermission: () => Promise<NotificationPermission>;
   browserPermission: NotificationPermission | 'unsupported';
   pushBrowser: (title: string, body: string) => void;
+  updateBrowserEnabled: (enabled: boolean) => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextType>({
@@ -29,6 +30,7 @@ const NotificationsContext = createContext<NotificationsContextType>({
   requestBrowserPermission: async () => 'default',
   browserPermission: 'default',
   pushBrowser: () => {},
+  updateBrowserEnabled: () => {},
 });
 
 let _notifId = 0;
@@ -154,6 +156,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     return result;
   }, []);
 
+  const updateBrowserEnabled = useCallback((enabled: boolean) => {
+    browserEnabledRef.current = enabled;
+  }, []);
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
@@ -165,6 +171,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       requestBrowserPermission,
       browserPermission,
       pushBrowser,
+      updateBrowserEnabled,
     }}>
       {children}
     </NotificationsContext.Provider>

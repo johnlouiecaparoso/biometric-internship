@@ -962,3 +962,16 @@ export async function saveSystemSettings(payload: { schedule: any; notifications
 
   if (error) throw error;
 }
+
+export async function fetchSystemInfoStats(): Promise<{ activeInterns: number; totalRecords: number; adminCount: number }> {
+  const [internRes, recordRes, adminRes] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'intern').eq('is_active', true),
+    supabase.from('attendance_records').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin').eq('is_active', true),
+  ]);
+  return {
+    activeInterns: internRes.count ?? 0,
+    totalRecords: recordRes.count ?? 0,
+    adminCount: adminRes.count ?? 0,
+  };
+}

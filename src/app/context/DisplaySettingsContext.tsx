@@ -5,6 +5,7 @@ import { fetchUserSettings, saveUserSettings } from '../lib/supabaseApi';
 export interface DisplaySettings {
   compactView: boolean;
   show24h: boolean;
+  darkMode: boolean;
 }
 
 interface DisplaySettingsContextType {
@@ -14,7 +15,7 @@ interface DisplaySettingsContextType {
   formatShortTime: (d: Date) => string;
 }
 
-const defaults: DisplaySettings = { compactView: false, show24h: false };
+const defaults: DisplaySettings = { compactView: false, show24h: false, darkMode: false };
 
 const DisplaySettingsContext = createContext<DisplaySettingsContextType>({
   display: defaults,
@@ -27,6 +28,11 @@ export function DisplaySettingsProvider({ children }: { children: React.ReactNod
   const { user } = useAuth();
   const [display, setDisplay] = useState<DisplaySettings>(defaults);
   const [loaded, setLoaded] = useState(false);
+
+  // Apply / remove the Tailwind dark-mode class whenever darkMode changes
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', display.darkMode);
+  }, [display.darkMode]);
 
   useEffect(() => {
     if (!user) return;

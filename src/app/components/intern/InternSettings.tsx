@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Bell, Fingerprint, Monitor, Shield, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useDisplaySettings } from '../../context/DisplaySettingsContext';
 import { useNotifications } from '../../context/NotificationsContext';
 import { fetchBiometricSettings, fetchUserSettings, saveBiometricCredential, saveUserSettings } from '../../lib/supabaseApi';
 import { isBiometricSupported, registerBiometricCredential } from '../../lib/biometricAuth';
+import { supabase } from '../../lib/supabase';
 
 interface ToggleProps {
   checked: boolean;
@@ -23,8 +25,11 @@ function Toggle({ checked, onChange }: ToggleProps) {
 export function InternSettings() {
   const { user } = useAuth();
   const { requestBrowserPermission, browserPermission } = useNotifications();
+  const { setDisplay: setDisplayCtx } = useDisplaySettings();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutMsg, setLogoutMsg] = useState('');
   const [notifs, setNotifs] = useState({ email: true, sms: false, browser: true, reminderTimeIn: true, reminderTimeOut: true, weeklyReport: false });
   const [bio, setBio] = useState({ fingerprint: true, faceId: false, fallbackPin: true });
   const [display, setDisplay] = useState({ compactView: false, darkMode: false, show24h: false });
@@ -77,8 +82,23 @@ export function InternSettings() {
       await saveUserSettings(user.id, { notifications: notifs, biometric: bio, display });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      // Propagate display changes to the context so they take effect immediately
+      setDisplayCtx({ compactView: display.compactView, show24h: display.show24h, darkMode: display.darkMode });
     } catch (err: any) {
       setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
+    }
+  };
+
+  const handleLogoutOthers = async () => {
+    setLogoutBusy(true);
+    setLogoutMsg('');
+    try {
+      await supabase.auth.signOut({ scope: 'others' });
+      setLogoutMsg('All other sessions have been signed out.');
+    } catch {
+      setLogoutMsg('Failed to sign out other sessions. Please try again.');
+    } finally {
+      setLogoutBusy(false);
     }
   };
 
@@ -181,9 +201,10 @@ export function InternSettings() {
         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
           <p className="text-gray-800 text-sm" style={{ fontWeight: 600 }}>Active Sessions</p>
           <p className="text-gray-500 text-xs mt-1 mb-3">You are currently logged in from 1 device.</p>
-          <button className="border border-red-200 text-red-600 hover:bg-red-50 text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 600 }}>
-            Logout All Other Sessions
+          <button className="border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 600 }} onClick={handleLogoutOthers} disabled={logoutBusy}>
+            {logoutBusy ? 'Signing out...' : 'Logout All Other Sessions'}
           </button>
+          {logoutMsg && <p className="text-xs mt-2 text-gray-500">{logoutMsg}</p>}
         </div>
       </>)}
 

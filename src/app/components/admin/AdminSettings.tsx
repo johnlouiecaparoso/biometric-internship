@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Settings, Clock, Bell, Shield, Users, CheckCircle2, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationsContext';
-import { fetchSystemSettings, saveSystemSettings } from '../../lib/supabaseApi';
+import { fetchSystemSettings, saveSystemSettings, fetchSystemInfoStats } from '../../lib/supabaseApi';
 
 interface ToggleProps { checked: boolean; onChange: () => void; }
 function Toggle({ checked, onChange }: ToggleProps) {
@@ -15,12 +16,19 @@ function Toggle({ checked, onChange }: ToggleProps) {
 
 export function AdminSettings() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [schedule, setSchedule] = useState({ timeIn: '08:00', timeOut: '17:00', graceMinutes: '15', undertimeMinutes: '60' });
+
+  const DEFAULT_SCHEDULE = { timeIn: '08:00', timeOut: '17:00', graceMinutes: '15', undertimeMinutes: '60' };
+  const DEFAULT_NOTIFS   = { absenceAlert: true, lateAlert: true, completionAlert: true, weeklyReport: true, pendingRequest: true };
+  const DEFAULT_SYSTEM   = { allowCorrections: true, requireSupervisor: true, autoApprove: false, biometricOnly: false };
+
+  const [schedule, setSchedule] = useState(DEFAULT_SCHEDULE);
   const { requestBrowserPermission, browserPermission } = useNotifications();
-  const [notifs, setNotifs] = useState({ absenceAlert: true, lateAlert: true, completionAlert: true, weeklyReport: true, pendingRequest: true });
-  const [system, setSystem] = useState({ allowCorrections: true, requireSupervisor: true, autoApprove: false, biometricOnly: false });
+  const [notifs, setNotifs] = useState(DEFAULT_NOTIFS);
+  const [system, setSystem] = useState(DEFAULT_SYSTEM);
+  const [sysInfo, setSysInfo] = useState({ activeInterns: 0, totalRecords: 0, adminCount: 0 });
 
   useEffect(() => {
     fetchSystemSettings()
@@ -30,6 +38,10 @@ export function AdminSettings() {
         setNotifs((prev) => ({ ...prev, ...(data.notifications ?? {}) }));
         setSystem((prev) => ({ ...prev, ...(data.policies ?? {}) }));
       })
+      .catch(() => null);
+
+    fetchSystemInfoStats()
+      .then((stats) => setSysInfo(stats))
       .catch(() => null);
   }, []);
 
@@ -47,6 +59,12 @@ export function AdminSettings() {
     } catch (err: any) {
       setSaveError(err?.message ?? 'Failed to save settings. Please try again.');
     }
+  };
+
+  const handleReset = () => {
+    setSchedule(DEFAULT_SCHEDULE);
+    setNotifs(DEFAULT_NOTIFS);
+    setSystem(DEFAULT_SYSTEM);
   };
 
   const section = (title: string, icon: React.ReactNode, children: React.ReactNode) => (
@@ -143,10 +161,16 @@ export function AdminSettings() {
       {section('Security & Access', <Shield className="w-4 h-4" />, <>
         <div className="space-y-3">
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-            <p className="text-gray-700 text-sm mb-1" style={{ fontWeight: 600 }}>Admin Access Control</p>
-            <p className="text-gray-400 text-xs mb-3">Currently 1 admin account is active</p>
-            <button className="text-blue-600 border border-blue-200 hover:bg-blue-50 text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 600 }}>
-              Manage Admin Accounts
+          <p className="text-gray-700 text-sm mb-1" style={{ fontWeight: 600 }}>Admin Access Control</p>
+            <p className="text-gray-400 text-xs mb-3">
+              {sysInfo.adminCount} admin account{sysInfo.adminCount !== 1 ? 's' : ''} active
+            </p>
+            <button
+              onClick={() => navigate('/admin/interns')}
+              className="text-blue-600 border border-blue-200 hover:bg-blue-50 text-xs px-3 py-1.5 rounded-lg transition-colors"
+              style={{ fontWeight: 600 }}
+            >
+              View Intern List
             </button>
           </div>
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -164,8 +188,8 @@ export function AdminSettings() {
           { label: 'System Version',   value: '2.1.4' },
           { label: 'Database',         value: 'PostgreSQL 16.0' },
           { label: 'Last Backup',      value: 'March 10, 2026 03:00 AM' },
-          { label: 'Active Interns',   value: '8' },
-          { label: 'Total Records',    value: '1,247 attendance records' },
+          { label: 'Active Interns',   value: String(sysInfo.activeInterns) },
+          { label: 'Total Records',    value: `${sysInfo.totalRecords.toLocaleString()} attendance records` },
         ].map(item => (
           <div key={item.label} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
             <span className="text-gray-500 text-xs">{item.label}</span>
@@ -175,7 +199,7 @@ export function AdminSettings() {
       </>)}
 
       <div className="flex justify-end gap-3">
-        <button className="border border-gray-200 hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl text-sm transition-colors" style={{ fontWeight: 500 }}>
+        <button className="border border-gray-200 hover:bg-gray-50 text-gray-600 px-5 py-2.5 rounded-xl text-sm transition-colors" style={{ fontWeight: 500 }} onClick={handleReset}>
           Reset to Defaults
         </button>
         <button

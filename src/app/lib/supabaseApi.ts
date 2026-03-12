@@ -126,10 +126,38 @@ export async function registerAccount(payload: {
         return { requiresEmailVerification: false, alreadySignedIn: true };
       }
 
-      // Sign-in also failed — the user probably used a different password
-      // the first time. They need to use the original password.
+      // Sign-in with the same password failed.
+      const signInCode = (signInError as any)?.code ?? '';
+      const signInMsg  = (signInError as any)?.message ?? '';
+
+      if (
+        signInCode === 'email_not_confirmed' ||
+        signInMsg.toLowerCase().includes('email not confirmed') ||
+        signInMsg.toLowerCase().includes('not confirmed')
+      ) {
+        throw new Error(
+          'Your email address has not been confirmed yet. ' +
+          'Please check your inbox for the confirmation email and click the link, then try signing in. ' +
+          'Or ask your administrator to disable email confirmation in Supabase Auth settings.'
+        );
+      }
+
+      if (
+        signInCode === 'invalid_credentials' ||
+        signInMsg.toLowerCase().includes('invalid') ||
+        signInMsg.toLowerCase().includes('wrong')
+      ) {
+        throw new Error(
+          'An account with this email already exists but the password does not match. ' +
+          'Please sign in from the Login page using your original password, ' +
+          'or ask your administrator to clear your account and re-register.'
+        );
+      }
+
+      // Unknown sign-in error
       throw new Error(
-        'This email was registered previously. Please go to the login page and sign in with the password you used when you first registered.'
+        `Sign-in failed (${signInMsg || signInCode || 'unknown error'}). ` +
+        'Please try signing in from the Login page, or ask your administrator to clear your account.'
       );
     }
 

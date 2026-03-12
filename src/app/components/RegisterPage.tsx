@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { GraduationCap, Eye, EyeOff, ChevronRight, ShieldCheck } from 'lucide-react';
 import { UserRole } from '../context/AuthContext';
@@ -18,12 +18,14 @@ export function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false); // sync guard against double-click race
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError('');
     setSuccess('');
 
@@ -69,6 +71,7 @@ export function RegisterPage() {
       const message = e?.message ?? 'Registration failed. Please try again.';
       setError(message);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };

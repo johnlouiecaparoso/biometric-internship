@@ -975,3 +975,93 @@ export async function fetchSystemInfoStats(): Promise<{ activeInterns: number; t
     adminCount: adminRes.count ?? 0,
   };
 }
+
+export interface AuditLogEntry {
+  id: string;
+  category: 'attendance' | 'request' | 'registration';
+  action: string;
+  actor: string;
+  timestamp: string;
+  status?: string;
+}
+
+export async function fetchAdminAuditLogs(): Promise<AuditLogEntry[]> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  const [attRes, reqRes, regRes] = await Promise.all([
+    supabase
+      .from('attendance_records')
+      .select('id, attendance_date, time_in, time_out, status, profiles:intern_profile_id(full_name)')
+      .gte('attendance_date', cutoffDate)
+      .order('attendance_date', { ascending: false })
+      .limit(60),
+    supabase
+      .from('correction_requests')
+      .select('id, submitted_at, status, request_type, request_date, profiles:intern_profile_id(full_name)')
+      .order('submitted_at', { ascending: false })
+      .limit(60),
+    supabase
+      .from('profiles')
+      .select('id, full_name, created_at, role')
+      .gte('created_at', cutoff.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(30),
+  ]);
+
+  const entries: AuditLogEntry[] = [];
+
+  (attRes.data ?? []).forEach((row: any) => {
+    const name = (row.profiles as any)?.full_name ?? 'Unknown Intern';
+    if (row.time_in) {
+      entries.push({
+        id: `att-in-${row.id}`,
+        category: 'attendance',
+        action: `Timed in at ${String(row.time_in).slice(0, 5)}`,
+        actor: name,
+        timestamp: `${row.attendance_date}T${row.time_in}`,
+        status: row.status,
+      });
+    }
+    if (row.time_out) {
+      entries.push({
+        id: `att-out-${row.id}`,
+        category: 'attendance',
+        action: `Timed out at ${String(row.time_out).slice(0, 5)}`,
+        actor: name,
+        timestamp: `${row.attendance_date}T${row.time_out}`,
+        status: row.status,
+      });
+    }
+  });
+
+  (reqRes.data ?? []).forEach((row: any) => {
+    const name = (row.profiles as any)?.full_name ?? 'Unknown Intern';
+    const typeLabel =
+      row.request_type === 'missing-time-in' ? 'Missing Time-In' :
+      row.request_type === 'missing-time-out' ? 'Missing Time-Out' : 'Correction';
+    entries.push({
+      id: `req-${row.id}`,
+      category: 'request',
+      action: `Submitted ${typeLabel} request for ${row.request_date}`,
+      actor: name,
+      timestamp: row.submitted_at,
+      status: row.status,
+    });
+  });
+
+  (regRes.data ?? []).forEach((row: any) => {
+    entries.push({
+      id: `reg-${row.id}`,
+      category: 'registration',
+      action: `New ${row.role} account registered`,
+      actor: row.full_name ?? 'Unknown',
+      timestamp: row.created_at,
+      status: 'info',
+    });
+  });
+
+  entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  return entries.slice(0, 120);
+}

@@ -237,7 +237,7 @@ export function AdminSettings() {
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
             <p className="text-gray-700 text-sm mb-1" style={{ fontWeight: 600 }}>Audit Logs</p>
             <p className="text-gray-400 text-xs mb-3">All system actions are logged for accountability</p>
-            <button className="text-blue-600 border border-blue-200 hover:bg-blue-50 text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 600 }}>
+            <button onClick={() => navigate('/admin/audit-logs')} className="text-blue-600 border border-blue-200 hover:bg-blue-50 text-xs px-3 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 600 }}>
               View Audit Logs
             </button>
           </div>

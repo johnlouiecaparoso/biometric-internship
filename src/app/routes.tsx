@@ -13,6 +13,8 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminInterns } from './components/admin/AdminInterns';
 import { AdminReports } from './components/admin/AdminReports';
 import { AdminSettings } from './components/admin/AdminSettings';
+import { AdminProfile } from './components/admin/AdminProfile';
+import { AdminAuditLogs } from './components/admin/AdminAuditLogs';
 
 function InternLayout() {
   return <AppLayout role="intern" />;
@@ -47,6 +49,8 @@ export const router = createBrowserRouter([
       { path: 'interns', Component: AdminInterns },
       { path: 'reports', Component: AdminReports },
       { path: 'settings', Component: AdminSettings },
+      { path: 'profile', Component: AdminProfile },
+      { path: 'audit-logs', Component: AdminAuditLogs },
     ],
   },
   { path: '*', element: <Navigate to="/login" replace /> },

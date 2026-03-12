@@ -26,10 +26,11 @@ const internNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
-  { label: 'Dashboard',     path: '/admin',           icon: <LayoutDashboard className="w-5 h-5" /> },
-  { label: 'Interns',       path: '/admin/interns',   icon: <Users className="w-5 h-5" /> },
-  { label: 'Reports',       path: '/admin/reports',   icon: <BarChart3 className="w-5 h-5" /> },
-  { label: 'Settings',      path: '/admin/settings',  icon: <Settings className="w-5 h-5" /> },
+  { label: 'Dashboard',     path: '/admin',             icon: <LayoutDashboard className="w-5 h-5" /> },
+  { label: 'Interns',       path: '/admin/interns',     icon: <Users className="w-5 h-5" /> },
+  { label: 'Reports',       path: '/admin/reports',     icon: <BarChart3 className="w-5 h-5" /> },
+  { label: 'Profile',       path: '/admin/profile',     icon: <User className="w-5 h-5" /> },
+  { label: 'Settings',      path: '/admin/settings',    icon: <Settings className="w-5 h-5" /> },
 ];
 
 interface AppLayoutProps {

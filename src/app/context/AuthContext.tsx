@@ -49,28 +49,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let alive = true;
     let initialized = false;
+    let authChangeSeq = 0;
 
-    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!alive) return;
-      if (session?.user) {
-        await refreshUser(session.user);
-      } else {
-        // SIGNED_OUT or no session — clear user directly without any network call
-        lastFetch.current = null;
-        setUser(null);
-      }
+    const finalizeInitialLoad = () => {
       if (!initialized && alive) {
         initialized = true;
         setLoading(false);
       }
+    };
+
+    const handleAuthSession = (session: { user?: { id: string } | null } | null) => {
+      const seq = ++authChangeSeq;
+      if (session?.user) {
+        // Keep the auth callback synchronous. Long async work here can hold
+        // Supabase's internal auth lock and trigger lock-steal AbortErrors.
+        void refreshUser(session.user)
+          .catch(() => {
+            if (!alive || seq !== authChangeSeq) return;
+            lastFetch.current = null;
+            setUser(null);
+          })
+          .finally(() => {
+            if (seq !== authChangeSeq) return;
+            finalizeInitialLoad();
+          });
+        return;
+      }
+
+      // SIGNED_OUT or no session — clear user directly without any network call
+      lastFetch.current = null;
+      setUser(null);
+      finalizeInitialLoad();
+    };
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!alive) return;
+      handleAuthSession(session);
     });
+
+    // Hydrate once on mount so loading resolves even if no auth event is emitted.
+    void supabase.auth.getSession()
+      .then(({ data: sessionData }) => {
+        if (!alive || initialized) return;
+        handleAuthSession(sessionData.session);
+      })
+      .catch(() => {
+        finalizeInitialLoad();
+      });
 
     // Safety fallback: if onAuthStateChange never fires, unblock loading after 3s
     const timeout = setTimeout(() => {
-      if (!initialized && alive) {
-        initialized = true;
-        setLoading(false);
-      }
+      finalizeInitialLoad();
     }, 3000);
 
     return () => {

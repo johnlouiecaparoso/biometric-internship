@@ -54,7 +54,7 @@ export function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(s => (
-          <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div key={s.label} className="bg-card rounded-2xl p-5 shadow-sm border border-border">
             <div className={`inline-flex p-2.5 rounded-xl ${s.bg} mb-3`}>
               <span className={s.text}>{s.icon}</span>
             </div>
@@ -70,10 +70,10 @@ export function AdminDashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Weekly Attendance Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-card rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Weekly Attendance</h3>
-            <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">This Week</span>
+            <h3 className="text-foreground" style={{ fontWeight: 600 }}>Weekly Attendance</h3>
+            <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">This Week</span>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={weeklyAttendanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
@@ -90,8 +90,8 @@ export function AdminDashboard() {
         </div>
 
         {/* Department Pie Chart */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-gray-800 mb-4" style={{ fontWeight: 600 }}>By Department</h3>
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
+          <h3 className="text-foreground mb-4" style={{ fontWeight: 600 }}>By Department</h3>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={departmentData} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
@@ -119,9 +119,9 @@ export function AdminDashboard() {
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Present Today */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Present Today</h3>
+            <h3 className="text-foreground" style={{ fontWeight: 600 }}>Present Today</h3>
             <span className="bg-emerald-100 text-emerald-700 text-xs px-2.5 py-1 rounded-full" style={{ fontWeight: 600 }}>{present} interns</span>
           </div>
           <div className="space-y-2.5">
@@ -146,9 +146,9 @@ export function AdminDashboard() {
         </div>
 
         {/* Alerts */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Alerts & Notifications</h3>
+            <h3 className="text-foreground" style={{ fontWeight: 600 }}>Alerts & Notifications</h3>
             <span className="bg-red-100 text-red-700 text-xs px-2.5 py-1 rounded-full" style={{ fontWeight: 600 }}>
               {correctionRequests.filter(r => r.status === 'pending').length > 0
                 ? `${correctionRequests.filter(r => r.status === 'pending').length} pending`

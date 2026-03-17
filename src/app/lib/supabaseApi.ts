@@ -43,18 +43,35 @@ function mapUser(profile: any): User {
 }
 
 export async function resolveLoginEmail(identifier: string, role: UserRole): Promise<string> {
-  if (identifier.includes('@')) return identifier;
+  const rawIdentifier = identifier.trim();
+  if (rawIdentifier.includes('@')) return rawIdentifier;
 
+  const compactIdentifier = rawIdentifier.replace(/\s+/g, '');
+
+  // First try exact ID match (fast path)
+  const { data: exactData, error: exactError } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('student_id', compactIdentifier)
+    .eq('role', role)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!exactError && exactData?.email) {
+    return exactData.email;
+  }
+
+  // Fallback: case-insensitive ID lookup for IDs like "admin002" vs "ADMIN002"
   const { data, error } = await supabase
     .from('profiles')
     .select('email')
-    .eq('student_id', identifier)
+    .ilike('student_id', compactIdentifier)
     .eq('role', role)
     .eq('is_active', true)
     .maybeSingle();
 
   if (error || !data?.email) {
-    throw new Error('Use your email address to sign in.');
+    throw new Error('No active account found for that ID number. Use your registered email or check your ID and role.');
   }
 
   return data.email;
@@ -66,7 +83,7 @@ export async function registerAccount(payload: {
   studentId: string;
   email: string;
   password: string;
-  department?: string;
+  college?: string;
   course?: string;
   yearLevel?: string;
 }) {
@@ -78,7 +95,7 @@ export async function registerAccount(payload: {
         full_name: payload.fullName,
         student_id: payload.studentId,
         role: payload.role,
-        department: payload.department ?? '',
+        department: payload.college ?? '',
         course: payload.course ?? '',
         year_level: payload.yearLevel ?? '',
       },

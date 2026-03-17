@@ -42,7 +42,7 @@ export function AppLayout({ role }: AppLayoutProps) {
   const { notifications, unreadCount, markAllRead, markRead } = useNotifications();
   const { formatShortTime: ctxShortTime } = useDisplaySettings();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Always open on desktop
   const [notifOpen, setNotifOpen] = useState(false);
   const [time, setTime] = useState(new Date());
   const navItems = role === 'intern' ? internNav : adminNav;
@@ -99,38 +99,21 @@ export function AppLayout({ role }: AppLayoutProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-40 w-[240px] bg-[#0f2a4e] flex flex-col
+          fixed top-0 left-0 h-full z-40 w-[240px] bg-[#112D4E] flex flex-col
           transition-transform duration-300 ease-in-out
-          lg:static lg:translate-x-0 lg:z-auto lg:flex-shrink-0
+          lg:fixed lg:translate-x-0 lg:z-40 lg:flex-shrink-0 lg:top-0 lg:h-full
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {/* Logo */}
+        {/* Logo and System Name */}
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <GraduationCap className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-[#3F72AF] rounded-lg flex items-center justify-center flex-shrink-0">
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-white text-sm" style={{ fontWeight: 700 }}>UniTrack IMS</p>
-              <p className="text-blue-300 text-xs capitalize">{role} Portal</p>
-            </div>
-          </div>
-        </div>
-
-        {/* User Info */}
-        <div className="px-4 py-3.5 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white text-xs" style={{ fontWeight: 700 }}>{initials}</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-white text-sm truncate" style={{ fontWeight: 500 }}>{user?.name}</p>
-              <p className="text-blue-300 text-xs truncate">{user?.role === 'admin' ? `Admin ID: ${user?.studentId}` : `Student ID: ${user?.studentId}`}</p>
+              <p className="text-white text-sm" style={{ fontWeight: 700 }}>InternTrack</p>
+              <p className="text-[#DBE2EF] text-xs">Biometric Internship Attendance System</p>
             </div>
           </div>
         </div>
@@ -146,8 +129,8 @@ export function AppLayout({ role }: AppLayoutProps) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                    : 'text-blue-200 hover:bg-white/10 hover:text-white'
+                    ? 'bg-[#3F72AF] text-white shadow-lg'
+                    : 'text-[#DBE2EF] hover:bg-[#F9F7F7]/20 hover:text-white'
                 }`
               }
             >
@@ -158,10 +141,10 @@ export function AppLayout({ role }: AppLayoutProps) {
         </nav>
 
         {/* Logout */}
-        <div className="p-3 border-t border-white/10">
+        <div className="p-3 border-t border-[#6AC1B8]/20">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-blue-200 hover:bg-red-500/20 hover:text-red-300 transition-all text-sm"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[#DBE2EF] hover:bg-red-500/20 hover:text-red-300 transition-all text-sm"
           >
             <LogOut className="w-5 h-5" />
             <span style={{ fontWeight: 500 }}>Logout</span>
@@ -170,12 +153,12 @@ export function AppLayout({ role }: AppLayoutProps) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 lg:ml-60`}>
         {/* Top Header */}
-        <header className="h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 flex-shrink-0 shadow-sm">
+        <header className="h-14 bg-gradient-to-r from-[#3F72AF] to-[#112D4E] border-b border-[#DBE2EF]/30 flex items-center gap-3 flex-shrink-0 shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-500"
+            className="lg:hidden p-1.5 rounded-lg hover:bg-white/20 text-white"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -183,17 +166,17 @@ export function AppLayout({ role }: AppLayoutProps) {
           <div className="flex-1" />
 
           {/* Time display */}
-          <div className="hidden sm:flex items-center gap-1.5 text-gray-500 text-sm bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-            <span style={{ fontWeight: 500 }} className="text-gray-800">{formatTime(time)}</span>
-            <span className="text-gray-400">·</span>
-            <span>{formatDate(time)}</span>
+          <div className="hidden sm:flex items-center gap-1.5 text-sm bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/30">
+            <span style={{ fontWeight: 500 }} className="text-white">{formatTime(time)}</span>
+            <span className="text-[#DBE2EF]">·</span>
+            <span className="text-white">{formatDate(time)}</span>
           </div>
 
           {/* Notification */}
           <div className="relative" ref={notifRef}>
             <button
               title="Notifications"
-              className="relative p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+              className="relative p-2 rounded-lg hover:bg-white/20 text-white"
               onClick={() => {
                 setNotifOpen(v => !v);
                 if (!notifOpen) markAllRead();
@@ -201,7 +184,7 @@ export function AppLayout({ role }: AppLayoutProps) {
             >
               <Bell className="w-4.5 h-4.5" style={{ width: '18px', height: '18px' }} />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold px-0.5">
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#3F72AF] rounded-full flex items-center justify-center text-white text-[10px] font-bold px-0.5">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -209,12 +192,12 @@ export function AppLayout({ role }: AppLayoutProps) {
 
             {/* Dropdown panel */}
             {notifOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <span className="font-semibold text-gray-800 text-sm">Notifications</span>
+              <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-[#DBE2EF]/30 z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#DBE2EF]/30 flex items-center justify-between">
+                  <span className="font-semibold text-[#112D4E] text-sm">Notifications</span>
                   {notifications.length > 0 && (
                     <button
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      className="text-xs text-[#3F72AF] hover:text-[#112D4E]"
                       onClick={() => markAllRead()}
                     >
                       Mark all read
@@ -223,7 +206,7 @@ export function AppLayout({ role }: AppLayoutProps) {
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-gray-400 text-sm">No notifications</div>
+                    <div className="px-4 py-8 text-center text-[#DBE2EF]/60 text-sm">No notifications</div>
                   ) : (
                     notifications.map(n => (
                       <div
@@ -250,18 +233,6 @@ export function AppLayout({ role }: AppLayoutProps) {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* User avatar */}
-          <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white text-xs" style={{ fontWeight: 700 }}>{initials}</span>
-              )}
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 hidden sm:block" />
           </div>
         </header>
 

@@ -2,12 +2,10 @@ import { useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { updateProfileInfo, updateOjtDetails } from '../../lib/supabaseApi';
-import { User, Mail, Building2, Calendar, GraduationCap, Lock, CheckCircle2, Pencil, Camera, X, Save } from 'lucide-react';
+import { User, Mail, Building2, Calendar, GraduationCap, CheckCircle2, Pencil, Camera, X, Save } from 'lucide-react';
 
 export function InternProfile() {
   const { user, updateUser } = useAuth();
-  const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
-  const [pwMsg, setPwMsg] = useState('');
 
   // Editable personal info state
   const [editing, setEditing] = useState(false);
@@ -139,26 +137,6 @@ export function InternProfile() {
     setOjtEditing(false);
   };
 
-  const handlePwChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pwForm.newPw !== pwForm.confirm) {
-      setPwMsg('error:New passwords do not match.');
-      return;
-    }
-    if (pwForm.newPw.length < 6) {
-      setPwMsg('error:Password must be at least 6 characters.');
-      return;
-    }
-    const { error } = await supabase.auth.updateUser({ password: pwForm.newPw });
-    if (error) {
-      setPwMsg(`error:${error.message}`);
-      return;
-    }
-    setPwMsg('success:Password changed successfully!');
-    setPwForm({ current: '', newPw: '', confirm: '' });
-    setTimeout(() => setPwMsg(''), 3000);
-  };
-
   const displayName  = editing ? form.name       : user.name;
   const displayCourse = editing ? form.course     : user.course;
   const displayYear  = editing ? form.yearLevel   : user.yearLevel;
@@ -273,7 +251,7 @@ export function InternProfile() {
         <div className="sm:ml-auto text-center sm:text-right">
           <p className="text-blue-200 text-xs mb-1">Internship Progress</p>
           <p className="text-white" style={{ fontWeight: 700, fontSize: '2rem' }}>{pct}%</p>
-          <p className="text-blue-200 text-xs">{user.renderedHours}/{user.requiredHours} hrs</p>
+          <p className="text-blue-200 text-xs">{user.renderedHours.toFixed(2)}/{user.requiredHours.toFixed(2)} hrs</p>
         </div>
       </div>
 
@@ -503,7 +481,7 @@ export function InternProfile() {
                     className="border border-gray-200 bg-gray-50 rounded-lg px-2 py-0.5 text-xs outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 text-right w-24"
                   />
                 ) : (
-                  <span className="text-gray-800 text-xs text-right" style={{ fontWeight: 500 }}>{user.renderedHours} hours</span>
+                  <span className="text-gray-800 text-xs text-right" style={{ fontWeight: 500 }}>{user.renderedHours.toFixed(2)} hours</span>
                 )}
               </div>
               {/* Remaining Hours (derived, always read-only) */}
@@ -513,7 +491,7 @@ export function InternProfile() {
                   <span className="text-gray-500 text-xs">Remaining Hours</span>
                 </div>
                 <span className="text-gray-800 text-xs text-right" style={{ fontWeight: 500 }}>
-                  {Math.max(0, ojtEditing ? ojtForm.requiredHours - ojtForm.renderedHours : user.requiredHours - user.renderedHours)} hours
+                  {Math.max(0, ojtEditing ? ojtForm.requiredHours - ojtForm.renderedHours : user.requiredHours - user.renderedHours).toFixed(2)} hours
                 </span>
               </div>
               {/* Start Date */}
@@ -565,58 +543,13 @@ export function InternProfile() {
               />
             </div>
             <div className="flex justify-between text-xs text-gray-500">
-              <span>{user.renderedHours} hrs rendered</span>
-              <span>{Math.max(0, user.requiredHours - user.renderedHours)} hrs remaining</span>
+              <span>{user.renderedHours.toFixed(2)} hrs rendered</span>
+              <span>{Math.max(0, user.requiredHours - user.renderedHours).toFixed(2)} hrs remaining</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Change Password */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
-            <Lock className="w-4 h-4 text-amber-600" />
-          </div>
-          <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Change Password</h3>
-        </div>
-
-        {pwMsg && (
-          <div className={`mb-4 p-3 rounded-xl flex items-center gap-2 text-sm ${pwMsg.startsWith('error') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-            {pwMsg.replace(/^(error|success):/, '')}
-          </div>
-        )}
-
-        <form onSubmit={handlePwChange} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            { label: 'Current Password', key: 'current', val: pwForm.current },
-            { label: 'New Password',     key: 'newPw',   val: pwForm.newPw },
-            { label: 'Confirm New',      key: 'confirm', val: pwForm.confirm },
-          ].map(f => (
-            <div key={f.key}>
-              <label className="block text-gray-600 text-xs mb-1.5" style={{ fontWeight: 500 }}>{f.label}</label>
-              <input
-                type="password"
-                value={f.val}
-                onChange={e => setPwForm(p => ({ ...p, [f.key]: e.target.value }))}
-                placeholder="••••••••"
-                className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-                required
-              />
-            </div>
-          ))}
-          <div className="sm:col-span-3 flex justify-end">
-            <button
-              type="submit"
-              className="bg-[#0f2a4e] hover:bg-[#1a3f6f] text-white px-5 py-2 rounded-xl text-sm transition-colors"
-              style={{ fontWeight: 600 }}
-            >
-              Update Password
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

@@ -5,20 +5,12 @@ import { useDisplaySettings } from '../../context/DisplaySettingsContext';
 import { fetchAttendanceHistory } from '../../lib/supabaseApi';
 import { AttendanceRecord } from '../../types/models';
 import {
-  Clock, CheckCircle2, AlertCircle, TrendingUp, Calendar,
-  Fingerprint, ChevronRight, Target, Hourglass, Award
+  Clock, CheckCircle2, AlertCircle, TrendingUp, Hourglass, Award, Target,
 } from 'lucide-react';
-
-const statusColors: Record<string, string> = {
-  present:   'bg-emerald-100 text-emerald-700',
-  late:      'bg-amber-100 text-amber-700',
-  absent:    'bg-red-100 text-red-700',
-  undertime: 'bg-orange-100 text-orange-700',
-};
 
 export function InternDashboard() {
   const { user } = useAuth();
-  const { display, formatTime, formatShortTime } = useDisplaySettings();
+  const { display, formatTime } = useDisplaySettings();
   const [now, setNow] = useState(new Date());
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
 
@@ -42,169 +34,172 @@ export function InternDashboard() {
   const pct = required > 0 ? Math.min(100, Math.round((rendered / required) * 100)) : 0;
 
   const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const todayRecord = attendanceHistory.find(r => r.date === todayDateStr) ?? null;
-  const recentHistory = attendanceHistory.filter(r => r.date !== todayDateStr).slice(0, 5);
+  const todayRecord = attendanceHistory.find((r) => r.date === todayDateStr) ?? null;
+  const recentHistory = attendanceHistory.filter((r) => r.date !== todayDateStr).slice(0, 5);
 
-  const formatDate = (d: Date) =>
-    d.toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const formatDate = (d: Date) => d.toLocaleDateString('en-PH', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   const stats = [
-    { label: 'Required Hours',  value: required, unit: 'hrs', icon: <Target className="w-5 h-5" />,   color: 'from-blue-500 to-blue-700',   bg: 'bg-blue-50',   text: 'text-blue-600' },
-    { label: 'Hours Rendered',  value: rendered, unit: 'hrs', icon: <CheckCircle2 className="w-5 h-5" />, color: 'from-emerald-500 to-emerald-700', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-    { label: 'Remaining Hours', value: remaining, unit: 'hrs', icon: <Hourglass className="w-5 h-5" />, color: 'from-amber-500 to-amber-600',  bg: 'bg-amber-50',  text: 'text-amber-600' },
-    { label: 'Completion',      value: pct,      unit: '%',   icon: <Award className="w-5 h-5" />,      color: 'from-violet-500 to-violet-700', bg: 'bg-violet-50', text: 'text-violet-600' },
+    {
+      label: 'Required Hours', value: required, unit: 'hrs', icon: <Target className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#3F72AF]',
+    },
+    {
+      label: 'Hours Rendered', value: rendered, unit: 'hrs', icon: <CheckCircle2 className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#112D4E]',
+    },
+    {
+      label: 'Remaining Hours', value: remaining, unit: 'hrs', icon: <Hourglass className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#DBE2EF]',
+    },
+    {
+      label: 'Completion', value: pct, unit: '%', icon: <Award className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#3F72AF]',
+    },
   ];
 
   return (
-    <div className={`${display.compactView ? 'space-y-4' : 'space-y-6'} max-w-6xl`}>
-      {/* Welcome */}
+    <div className={`${display.compactView ? 'space-y-4' : 'space-y-6'} max-w-6xl dark:[&_*]:text-white`}>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>
+          <h1 className="text-[#3F72AF]" style={{ fontWeight: 700, fontSize: '1.375rem' }}>
             Good {now.getHours() < 12 ? 'Morning' : now.getHours() < 17 ? 'Afternoon' : 'Evening'}, {user.name.split(' ')[0]}! 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">{formatDate(now)}</p>
+          <p className="text-[#112D4E] text-sm mt-0.5">{formatDate(now)}</p>
         </div>
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
-          <Clock className="w-4 h-4 text-blue-600" />
-          <span className="text-gray-800 text-sm tabular-nums" style={{ fontWeight: 600 }}>{formatTime(now)}</span>
+        <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-[#DBE2EF]/30 rounded-xl px-4 py-2.5 shadow-sm">
+          <Clock className="w-4 h-4 text-[#3F72AF]" />
+          <span className="text-[#3F72AF] text-sm tabular-nums" style={{ fontWeight: 600 }}>{formatTime(now)}</span>
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <div key={s.label} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div key={s.label} className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border">
             <div className={`inline-flex p-2.5 rounded-xl ${s.bg} mb-3`}>
               <span className={s.text}>{s.icon}</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.75rem' }}>{Number(s.value) ?? 0}</span>
-              <span className="text-gray-400 text-sm">{s.unit}</span>
+              <span className="text-foreground" style={{ fontWeight: 700, fontSize: '1.75rem' }}>{Number(s.value).toFixed(2) ?? '0.00'}</span>
+              <span className="text-[#112D4E] text-sm">{s.unit}</span>
             </div>
-            <p className="text-gray-500 text-xs mt-0.5">{s.label}</p>
+            <p className="text-[#DBE2EF]/70 text-xs mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* Progress */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+      <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Internship Progress</h3>
-            <p className="text-gray-500 text-sm">{rendered} of {required} hours completed</p>
+            <h3 className="text-[#3F72AF]" style={{ fontWeight: 600 }}>Internship Progress</h3>
+            <p className="text-[#112D4E] text-sm">{rendered} of {required} hours completed</p>
           </div>
           <span
-            className={`text-sm px-3 py-1 rounded-full ${pct >= 100 ? 'bg-emerald-100 text-emerald-700' : pct >= 75 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}
+            className={`text-sm px-3 py-1 rounded-full ${pct >= 100 ? 'bg-[#3F72AF]/20 text-[#3F72AF]' : pct >= 75 ? 'bg-[#112D4E]/20 text-[#112D4E]' : 'bg-[#DBE2EF]/30 text-[#3F72AF]'}`}
             style={{ fontWeight: 600 }}
           >
             {pct}%
           </span>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-3 bg-[#DBE2EF]/30 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${
-              pct >= 100 ? 'bg-emerald-500' : pct >= 75 ? 'bg-blue-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-400'
+              pct >= 100 ? 'bg-gradient-to-r from-[#3F72AF] to-[#112D4E]' : pct >= 75 ? 'bg-gradient-to-r from-[#112D4E] to-[#DBE2EF]' : 'bg-gradient-to-r from-[#DBE2EF] to-[#3F72AF]'
             }`}
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-gray-400 mt-1.5">
+        <div className="flex justify-between text-xs text-[#DBE2EF]/60 mt-1.5">
           <span>0 hrs</span>
           <span>{required} hrs</span>
         </div>
       </div>
 
-      {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Today's Attendance */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Today's Attendance</h3>
-            <span className="text-xs text-gray-400">{now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+            <h3 className="text-[#3F72AF]" style={{ fontWeight: 600 }}>Today's Attendance</h3>
+            <span className="text-xs text-[#DBE2EF]/60">{now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
           <div className="space-y-3">
-            <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${todayRecord?.timeIn ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+            <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${todayRecord?.timeIn ? 'bg-primary/20' : 'bg-muted'}`}>
               <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${todayRecord?.timeIn ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${todayRecord?.timeIn ? 'bg-[#3F72AF]' : 'bg-[#DBE2EF]/50'}`}>
                   <CheckCircle2 className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-gray-800 text-sm" style={{ fontWeight: 500 }}>Time In</p>
-                  <p className={`text-xs ${todayRecord?.timeIn ? 'text-emerald-700' : 'text-gray-400'}`}>
+                  <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>Time In</p>
+                  <p className={`text-xs ${todayRecord?.timeIn ? 'text-[#3F72AF]' : 'text-[#DBE2EF]/60'}`}>
                     {todayRecord?.timeIn ? 'Recorded successfully' : 'Not yet recorded'}
                   </p>
                 </div>
               </div>
-              <span className={`text-sm tabular-nums ${todayRecord?.timeIn ? 'text-gray-800' : 'text-gray-400'}`} style={{ fontWeight: 600 }}>
+              <span className={`text-sm tabular-nums ${todayRecord?.timeIn ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontWeight: 600 }}>
                 {todayRecord?.timeIn ?? '–'}
               </span>
             </div>
-            <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${todayRecord?.timeOut ? 'bg-orange-50' : 'bg-gray-50'}`}>
+            <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${todayRecord?.timeOut ? 'bg-[#112D4E]/20' : 'bg-[#DBE2EF]/10'}`}>
               <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${todayRecord?.timeOut ? 'bg-orange-500' : 'bg-gray-300'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${todayRecord?.timeOut ? 'bg-[#112D4E]' : 'bg-[#DBE2EF]/50'}`}>
                   <AlertCircle className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-gray-800 text-sm" style={{ fontWeight: 500 }}>Time Out</p>
-                  <p className={`text-xs ${todayRecord?.timeOut ? 'text-orange-700' : 'text-gray-400'}`}>
+                  <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>Time Out</p>
+                  <p className={`text-xs ${todayRecord?.timeOut ? 'text-[#112D4E]' : 'text-[#DBE2EF]/60'}`}>
                     {todayRecord?.timeOut ? 'Recorded successfully' : 'Not yet recorded'}
                   </p>
                 </div>
               </div>
-              <span className={`text-sm tabular-nums ${todayRecord?.timeOut ? 'text-gray-800' : 'text-gray-400'}`} style={{ fontWeight: 600 }}>
+              <span className={`text-sm tabular-nums ${todayRecord?.timeOut ? 'text-foreground' : 'text-muted-foreground'}`} style={{ fontWeight: 600 }}>
                 {todayRecord?.timeOut ?? '–'}
               </span>
             </div>
           </div>
-          <Link
-            to="/intern/attendance"
-            className="mt-4 flex items-center justify-center gap-2 w-full bg-[#0f2a4e] hover:bg-[#1a3f6f] text-white py-2.5 rounded-xl text-sm transition-colors"
-            style={{ fontWeight: 500 }}
-          >
-            <Fingerprint className="w-4 h-4" /> Go to Attendance
-          </Link>
         </div>
 
-        {/* Recent History */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Recent Attendance</h3>
-            <Link to="/intern/history" className="text-blue-600 hover:text-blue-700 text-xs flex items-center gap-1" style={{ fontWeight: 500 }}>
-              View all <ChevronRight className="w-3 h-3" />
+            <h3 className="text-[#3F72AF]" style={{ fontWeight: 600 }}>Recent History</h3>
+            <Link to="/intern/history" className="text-xs text-[#3F72AF] hover:text-[#112D4E] transition-colors" style={{ fontWeight: 500 }}>
+              View all
             </Link>
           </div>
-          <div className="space-y-2.5">
-            {recentHistory.map((rec) => (
-              <div key={rec.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
+          <div className="space-y-2">
+            {recentHistory.length === 0 ? (
+              <p className="text-[#DBE2EF]/60 text-sm text-center py-4">No recent attendance records</p>
+            ) : (
+              recentHistory.map((record) => (
+                <div key={record.id} className="flex items-center justify-between rounded-lg px-3 py-2 bg-muted">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium ${
+                        record.status === 'present' ? 'bg-[#3F72AF] text-white'
+                          : record.status === 'late' ? 'bg-[#112D4E] text-white'
+                            : 'bg-[#F9F7F7]/50 text-[#3F72AF]'
+                      }`}
+                    >
+                      {record.status === 'present' ? 'P' : record.status === 'late' ? 'L' : 'A'}
+                    </div>
+                    <div>
+                      <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>
+                        {new Date(record.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <p className="text-[#DBE2EF]/60 text-xs">
+                        {record.timeIn || '–'} → {record.timeOut || '–'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-800 text-sm" style={{ fontWeight: 500 }}>
-                      {new Date(rec.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
-                    </p>
-                    <p className="text-gray-400 text-xs">
-                      {rec.timeIn ? `${rec.timeIn} – ${rec.timeOut ?? '–'}` : 'No record'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {rec.status !== 'absent' && (
-                    <span className="text-gray-500 text-xs">{rec.hoursRendered}h</span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${statusColors[rec.status]}`} style={{ fontWeight: 500 }}>
-                    {rec.status}
+                  <span className="text-foreground text-sm" style={{ fontWeight: 600 }}>
+                    {record.hoursRendered > 0 ? `${record.hoursRendered}h` : '–'}
                   </span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      {/* Internship Info Banner */}
       <div className="bg-gradient-to-r from-[#0f2a4e] to-[#1a4a80] rounded-2xl p-5 text-white">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">

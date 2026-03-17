@@ -6,6 +6,9 @@ import {
   AreaChart, Area, Legend
 } from 'recharts';
 import { FileDown, FileSpreadsheet, Filter, CheckCircle2, Users, Clock, TrendingUp } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export function AdminReports() {
   const [internProfiles, setInternProfiles] = useState<InternProfile[]>([]);
@@ -21,8 +24,85 @@ export function AdminReports() {
     fetchMonthlyHoursData(10).then(setMonthlyHoursData).catch(() => setMonthlyHoursData([]));
   }, []);
 
-  const triggerExport = (type: string) => {
-    setExportMsg(`${type} report generated. Download started.`);
+  const triggerExport = async (type: 'PDF' | 'Excel') => {
+    setExportMsg(`Generating ${type} report...`);
+    
+    try {
+      const reportData = filteredInterns.map(intern => ({
+        'Name': intern.name,
+        'Student ID': intern.studentId,
+        'Department': intern.department || 'N/A',
+        'Required Hours': intern.requiredHours,
+        'Rendered Hours': intern.renderedHours.toFixed(2),
+        'Remaining Hours': (intern.requiredHours - intern.renderedHours).toFixed(2),
+        'Progress': `${intern.progress}%`,
+        'Status': intern.status,
+        'Present Today': intern.presentToday ? 'Yes' : 'No'
+      }));
+
+      if (type === 'PDF') {
+        const doc = new jsPDF();
+        
+        // Add title
+        doc.setFontSize(18);
+        doc.text('Internship Attendance Report', 14, 15);
+        
+        // Add metadata
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 25);
+        doc.text(`Filter: ${filterDept === 'all' ? 'All Departments' : filterDept}`, 14, 32);
+        doc.text(`Total Interns: ${filteredInterns.length}`, 14, 39);
+        
+        // Add table
+        autoTable(doc, {
+          head: [['Name', 'Student ID', 'Department', 'Required Hours', 'Rendered Hours', 'Remaining Hours', 'Progress', 'Status']],
+          body: reportData.map(row => [
+            row.Name,
+            row['Student ID'],
+            row.Department,
+            row['Required Hours'],
+            row['Rendered Hours'],
+            row['Remaining Hours'],
+            row.Progress,
+            row.Status
+          ]),
+          startY: 50,
+          styles: {
+            fontSize: 8,
+            cellPadding: 2
+          },
+          headStyles: {
+            fillColor: [53, 88, 114],
+            textColor: 255
+          }
+        });
+        
+        doc.save('internship-report.pdf');
+      } else if (type === 'Excel') {
+        const ws = XLSX.utils.json_to_sheet(reportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Internship Report');
+        
+        // Add summary sheet
+        const summaryData = [
+          { 'Metric': 'Total Interns', 'Value': filteredInterns.length },
+          { 'Metric': 'Total Hours Rendered', 'Value': totalHours.toFixed(2) },
+          { 'Metric': 'Average Progress', 'Value': `${avgProgress}%` },
+          { 'Metric': 'Completed Interns', 'Value': completed },
+          { 'Metric': 'Present Today', 'Value': present }
+        ];
+        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+        
+        XLSX.writeFile(wb, 'internship-report.xlsx');
+      }
+      
+      setExportMsg(`${type} report generated successfully!`);
+    } catch (error) {
+      setExportMsg(`Failed to generate ${type} report. Please try again.`);
+      console.error('Export error:', error);
+    }
+    
     setTimeout(() => setExportMsg(''), 3500);
   };
 
@@ -110,7 +190,7 @@ export function AdminReports() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Interns Included', value: filteredInterns.length, icon: <Users className="w-4 h-4" />,       color: 'text-blue-600',    bg: 'bg-blue-50' },
-          { label: 'Total Hours',      value: `${totalHours}h`,       icon: <Clock className="w-4 h-4" />,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Total Hours',      value: `${totalHours.toFixed(2)}h`,       icon: <Clock className="w-4 h-4" />,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Avg. Progress',    value: `${avgProgress}%`,      icon: <TrendingUp className="w-4 h-4" />,  color: 'text-violet-600',  bg: 'bg-violet-50' },
           { label: 'Completed',        value: completed,              icon: <CheckCircle2 className="w-4 h-4" />,color: 'text-amber-600',   bg: 'bg-amber-50' },
         ].map(s => (
@@ -195,9 +275,9 @@ export function AdminReports() {
                   <td className="px-4 py-3 text-gray-800 text-xs" style={{ fontWeight: 500 }}>{intern.name}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{intern.studentId}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{intern.department}</td>
-                  <td className="px-4 py-3 text-gray-700 text-xs">{intern.requiredHours}h</td>
-                  <td className="px-4 py-3 text-gray-700 text-xs">{intern.renderedHours}h</td>
-                  <td className="px-4 py-3 text-gray-700 text-xs">{Math.max(0, intern.requiredHours - intern.renderedHours)}h</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs">{intern.requiredHours.toFixed(2)}h</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs">{intern.renderedHours.toFixed(2)}h</td>
+                  <td className="px-4 py-3 text-gray-700 text-xs">{Math.max(0, intern.requiredHours - intern.renderedHours).toFixed(2)}h</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 min-w-[70px]">
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -230,9 +310,9 @@ export function AdminReports() {
             <tfoot>
               <tr className="bg-gray-50 border-t border-gray-200">
                 <td colSpan={3} className="px-4 py-3 text-gray-600 text-xs" style={{ fontWeight: 600 }}>Totals ({filteredInterns.length} interns)</td>
-                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{filteredInterns.reduce((s, i) => s + i.requiredHours, 0)}h</td>
-                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{totalHours}h</td>
-                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{filteredInterns.reduce((s, i) => s + Math.max(0, i.requiredHours - i.renderedHours), 0)}h</td>
+                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{filteredInterns.reduce((s, i) => s + i.requiredHours, 0).toFixed(2)}h</td>
+                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{totalHours.toFixed(2)}h</td>
+                <td className="px-4 py-3 text-gray-700 text-xs" style={{ fontWeight: 700 }}>{filteredInterns.reduce((s, i) => s + Math.max(0, i.requiredHours - i.renderedHours), 0).toFixed(2)}h</td>
                 <td className="px-4 py-3 text-gray-600 text-xs" style={{ fontWeight: 600 }}>Avg: {avgProgress}%</td>
                 <td className="px-4 py-3 text-gray-600 text-xs" style={{ fontWeight: 600 }}>{completed} done</td>
                 <td className="px-4 py-3 text-gray-600 text-xs" style={{ fontWeight: 600 }}>{present} present</td>
@@ -276,13 +356,13 @@ export function AdminReports() {
                   </div>
                   <span className="text-gray-500 text-xs flex-shrink-0">{intern.progress}%</span>
                 </div>
-                <p className="text-gray-500 text-xs">{intern.renderedHours}h rendered · {intern.requiredHours}h required · {Math.max(0, intern.requiredHours - intern.renderedHours)}h remaining</p>
+                <p className="text-gray-500 text-xs">{intern.renderedHours.toFixed(2)}h rendered · {intern.requiredHours.toFixed(2)}h required · {Math.max(0, intern.requiredHours - intern.renderedHours).toFixed(2)}h remaining</p>
               </div>
             ))
           )}
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
             <p className="text-gray-600 text-xs" style={{ fontWeight: 600 }}>
-              Totals: {filteredInterns.reduce((s, i) => s + i.requiredHours, 0)}h required · {totalHours}h rendered · Avg {avgProgress}% · {completed} completed
+              Totals: {filteredInterns.reduce((s, i) => s + i.requiredHours, 0).toFixed(2)}h required · {totalHours.toFixed(2)}h rendered · Avg {avgProgress}% · {completed} completed
             </p>
           </div>
         </div>

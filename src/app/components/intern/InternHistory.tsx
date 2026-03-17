@@ -133,7 +133,7 @@ export function InternHistory() {
                     <td className="px-5 py-3.5 text-gray-700 tabular-nums">{rec.timeOut ? `${rec.timeOut}` : <span className="text-gray-400">–</span>}</td>
                     <td className="px-5 py-3.5">
                       {rec.hoursRendered > 0 ? (
-                        <span className="text-gray-800" style={{ fontWeight: 500 }}>{rec.hoursRendered}h</span>
+                        <span className="text-gray-800" style={{ fontWeight: 500 }}>{rec.hoursRendered.toFixed(2)}h</span>
                       ) : (
                         <span className="text-gray-400">–</span>
                       )}
@@ -171,7 +171,7 @@ export function InternHistory() {
                     </p>
                     <p className="text-gray-500 text-xs tabular-nums">
                       {rec.timeIn ?? '–'} → {rec.timeOut ?? '–'}
-                      {rec.hoursRendered > 0 && <span className="ml-1.5 text-blue-600" style={{ fontWeight: 500 }}>{rec.hoursRendered}h</span>}
+                      {rec.hoursRendered > 0 && <span className="ml-1.5 text-blue-600" style={{ fontWeight: 500 }}>{rec.hoursRendered.toFixed(2)}h</span>}
                     </p>
                   </div>
                 </div>
@@ -188,7 +188,7 @@ export function InternHistory() {
         <div className="px-4 py-3.5 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <p className="text-gray-500 text-xs">
             Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} records
-            <span className="ml-2 text-blue-600" style={{ fontWeight: 500 }}>· Total: {totalHours.toFixed(1)}h rendered</span>
+            <span className="ml-2 text-blue-600" style={{ fontWeight: 500 }}>· Total: {totalHours.toFixed(2)}h rendered</span>
           </p>
           <div className="flex items-center gap-1">
             <button

@@ -4,6 +4,9 @@ import { fetchAttendanceHistory, fetchMonthlyHoursData } from '../../lib/supabas
 import { AttendanceRecord } from '../../types/models';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { FileDown, FileSpreadsheet, Filter, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 export function InternReports() {
   const { user } = useAuth();
@@ -17,9 +20,103 @@ export function InternReports() {
     fetchMonthlyHoursData(10).then(setMonthlyHoursData).catch(() => setMonthlyHoursData([]));
   }, [user]);
 
-  const triggerExport = (type: string) => {
-    setExportMsg(`${type} export initiated. File will be downloaded shortly.`);
-    setTimeout(() => setExportMsg(''), 3000);
+  const exportToPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Attendance Report', 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Name: ${user?.name || ''}`, 20, 30);
+      doc.text(`Student ID: ${user?.studentId || ''}`, 20, 37);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 44);
+      
+      // Add summary stats
+      doc.setFontSize(14);
+      doc.text('Summary', 20, 55);
+      doc.setFontSize(10);
+      doc.text(`Total Days Attended: ${totalDays}`, 20, 62);
+      doc.text(`Total Hours Rendered: ${totalH.toFixed(2)} hrs`, 20, 69);
+      doc.text(`Days Late: ${late}`, 20, 76);
+      doc.text(`Days Absent: ${absent}`, 20, 83);
+      
+      // Add table
+      const tableData = attendanceHistory.map(rec => [
+        new Date(rec.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
+        new Date(rec.date).toLocaleDateString('en-PH', { weekday: 'short' }),
+        rec.timeIn || '–',
+        rec.timeOut || '–',
+        rec.hoursRendered > 0 ? `${rec.hoursRendered.toFixed(2)}h` : '–',
+        rec.status
+      ]);
+      
+      autoTable(doc, {
+        head: [['Date', 'Day', 'Time In', 'Time Out', 'Hours', 'Status']],
+        body: tableData,
+        startY: 90,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [7, 88, 138] }
+      });
+      
+      // Save the PDF
+      doc.save(`attendance-report-${user?.studentId}-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      setExportMsg('PDF export completed successfully!');
+      setTimeout(() => setExportMsg(''), 3000);
+    } catch (error) {
+      setExportMsg('PDF export failed. Please try again.');
+      setTimeout(() => setExportMsg(''), 3000);
+    }
+  };
+
+  const exportToExcel = () => {
+    try {
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      
+      // Create summary worksheet
+      const summaryData = [
+        ['Attendance Report Summary'],
+        ['Name', user?.name || ''],
+        ['Student ID', user?.studentId || ''],
+        ['Generated', new Date().toLocaleDateString()],
+        [],
+        ['Summary Statistics'],
+        ['Total Days Attended', totalDays],
+        ['Total Hours Rendered', totalH.toFixed(2)],
+        ['Days Late', late],
+        ['Days Absent', absent]
+      ];
+      
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+      
+      // Create attendance data worksheet
+      const attendanceData = [
+        ['Date', 'Day', 'Time In', 'Time Out', 'Hours Rendered', 'Status'],
+        ...attendanceHistory.map(rec => [
+          new Date(rec.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }),
+          new Date(rec.date).toLocaleDateString('en-PH', { weekday: 'short' }),
+          rec.timeIn || '–',
+          rec.timeOut || '–',
+          rec.hoursRendered,
+          rec.status
+        ])
+      ];
+      
+      const wsAttendance = XLSX.utils.aoa_to_sheet(attendanceData);
+      XLSX.utils.book_append_sheet(wb, wsAttendance, 'Attendance');
+      
+      // Save the Excel file
+      XLSX.writeFile(wb, `attendance-report-${user?.studentId}-${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      setExportMsg('Excel export completed successfully!');
+      setTimeout(() => setExportMsg(''), 3000);
+    } catch (error) {
+      setExportMsg('Excel export failed. Please try again.');
+      setTimeout(() => setExportMsg(''), 3000);
+    }
   };
 
   if (!user) return null;
@@ -51,14 +148,14 @@ export function InternReports() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
-            onClick={() => triggerExport('PDF')}
+            onClick={exportToPDF}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm transition-colors"
             style={{ fontWeight: 600 }}
           >
             <FileDown className="w-4 h-4" /> Export PDF
           </button>
           <button
-            onClick={() => triggerExport('Excel')}
+            onClick={exportToExcel}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm transition-colors"
             style={{ fontWeight: 600 }}
           >
@@ -98,7 +195,7 @@ export function InternReports() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Days Attended',  value: totalDays, unit: 'days', icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: 'Total Hours Rendered', value: totalH.toFixed(1), unit: 'hrs', icon: <Clock className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Total Hours Rendered', value: totalH.toFixed(2), unit: 'hrs', icon: <Clock className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Days Late',            value: late, unit: 'days', icon: <TrendingUp className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Days Absent',          value: absent, unit: 'days', icon: <TrendingUp className="w-4 h-4" />, color: 'text-red-600', bg: 'bg-red-50' },
         ].map(s => (
@@ -157,10 +254,10 @@ export function InternReports() {
         <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <h3 className="text-gray-800" style={{ fontWeight: 600 }}>Attendance Summary</h3>
           <div className="flex gap-2">
-            <button onClick={() => triggerExport('PDF')} className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 500 }}>
+            <button onClick={exportToPDF} className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 border border-red-200 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 500 }}>
               <FileDown className="w-3.5 h-3.5" /> PDF
             </button>
-            <button onClick={() => triggerExport('Excel')} className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 500 }}>
+            <button onClick={exportToExcel} className="flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 border border-emerald-200 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg transition-colors" style={{ fontWeight: 500 }}>
               <FileSpreadsheet className="w-3.5 h-3.5" /> Excel
             </button>
           </div>
@@ -181,7 +278,7 @@ export function InternReports() {
                   <td className="px-5 py-3 text-gray-500 text-xs">{new Date(rec.date).toLocaleDateString('en-PH', { weekday: 'short' })}</td>
                   <td className="px-5 py-3 text-gray-700 text-xs tabular-nums">{rec.timeIn ?? '–'}</td>
                   <td className="px-5 py-3 text-gray-700 text-xs tabular-nums">{rec.timeOut ?? '–'}</td>
-                  <td className="px-5 py-3 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{rec.hoursRendered > 0 ? `${rec.hoursRendered}h` : '–'}</td>
+                  <td className="px-5 py-3 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{rec.hoursRendered > 0 ? `${rec.hoursRendered.toFixed(2)}h` : '–'}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
                       rec.status === 'present' ? 'bg-emerald-100 text-emerald-700' :

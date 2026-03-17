@@ -128,8 +128,8 @@ export function AdminInterns() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-600 text-xs whitespace-nowrap">{intern.studentId}</td>
                     <td className="px-4 py-3.5 text-gray-600 text-xs whitespace-nowrap">{intern.department}</td>
-                    <td className="px-4 py-3.5 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{intern.requiredHours}h</td>
-                    <td className="px-4 py-3.5 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{intern.renderedHours}h</td>
+                    <td className="px-4 py-3.5 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{intern.requiredHours.toFixed(2)}h</td>
+                    <td className="px-4 py-3.5 text-gray-700 text-xs" style={{ fontWeight: 500 }}>{intern.renderedHours.toFixed(2)}h</td>
                     <td className="px-4 py-3.5">
                       <div className="min-w-[80px]">
                         <div className="flex items-center justify-between mb-1">
@@ -206,7 +206,7 @@ export function AdminInterns() {
                           style={{ width: `${intern.progress}%` }}
                         />
                       </div>
-                      <span className="text-gray-500 text-xs flex-shrink-0">{intern.progress}% · {intern.renderedHours}/{intern.requiredHours}h</span>
+                      <span className="text-gray-500 text-xs flex-shrink-0">{intern.progress}% · {intern.renderedHours.toFixed(2)}/{intern.requiredHours.toFixed(2)}h</span>
                     </div>
                   </div>
                   <button
@@ -258,9 +258,9 @@ export function AdminInterns() {
                   { label: 'Department',     value: selected.department },
                   { label: 'Company',        value: selected.company },
                   { label: 'Supervisor',     value: selected.supervisor },
-                  { label: 'Required Hours', value: `${selected.requiredHours} hours` },
-                  { label: 'Hours Rendered', value: `${selected.renderedHours} hours` },
-                  { label: 'Remaining',      value: `${Math.max(0, selected.requiredHours - selected.renderedHours)} hours` },
+                  { label: 'Required Hours', value: `${selected.requiredHours.toFixed(2)} hours` },
+                  { label: 'Hours Rendered', value: `${selected.renderedHours.toFixed(2)} hours` },
+                  { label: 'Remaining',      value: `${Math.max(0, selected.requiredHours - selected.renderedHours).toFixed(2)} hours` },
                   { label: 'Start Date',     value: selected.startDate },
                 ].map(row => (
                   <div key={row.label} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth, UserRole } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { GraduationCap, Fingerprint, Eye, EyeOff, ShieldCheck, ChevronRight } from 'lucide-react';
+import { GraduationCap, Fingerprint, Eye, EyeOff, ShieldCheck, ChevronRight, Key, Mail, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { isBiometricSupported, verifyBiometricCredential } from '../lib/biometricAuth';
 
@@ -13,6 +13,10 @@ export function LoginPage() {
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [biometricState, setBiometricState] = useState<'idle' | 'scanning' | 'success' | 'failed'>('idle');
@@ -24,6 +28,38 @@ export function LoginPage() {
       biometricSupported && !!localStorage.getItem('biometric_login_hint')
     );
   }, [biometricSupported]);
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      setResetMessage('Please enter your email address');
+      return;
+    }
+    
+    setResetLoading(true);
+    setResetMessage('');
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) {
+        setResetMessage(error.message);
+      } else {
+        setResetMessage('Password reset link sent! Check your email.');
+        setTimeout(() => {
+          setShowResetPassword(false);
+          setResetEmail('');
+          setResetMessage('');
+        }, 3000);
+      }
+    } catch (error) {
+      setResetMessage('An error occurred. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,22 +145,22 @@ export function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#0f2a4e] via-[#1a4478] to-[#0f2a4e] flex items-center justify-center p-4">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#355872] via-[#4a6b89] to-[#355872] flex items-center justify-center p-4">
       {/* Background pattern */}
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-20 w-96 h-96 bg-blue-400 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-cyan-400 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-[#7AAACE] rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#9CD5FF] rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl mb-4 border border-white/20">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur-sm rounded-lg mb-4 border border-white/20">
             <GraduationCap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-white text-2xl" style={{ fontWeight: 700 }}>UniTrack</h1>
-          <p className="text-blue-200 text-sm mt-1">Internship Monitoring System</p>
-          <p className="text-blue-300/70 text-xs mt-1">University of the Philippines</p>
+          <h1 className="text-white text-2xl" style={{ fontWeight: 700 }}>InternTrack</h1>
+          <p className="text-[#7AAACE] text-sm mt-1">Biometric Internship Attendance System</p>
+          <p className="text-[#9CD5FF]/70 text-xs mt-1">Caraga State University - Main Campus</p>
         </div>
 
         {/* Card */}
@@ -133,14 +169,14 @@ export function LoginPage() {
           <div className="flex border-b">
             <button
               onClick={() => { setRole('intern'); setError(''); }}
-              className={`flex-1 py-3.5 text-sm transition-all ${role === 'intern' ? 'bg-[#1e3a5f] text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              className={`flex-1 py-3.5 text-sm transition-all ${role === 'intern' ? 'bg-[#355872] text-white' : 'text-gray-500 hover:bg-[#7AAACE]/20'}`}
               style={{ fontWeight: 600 }}
             >
               Student / Intern
             </button>
             <button
-              onClick={() => { setRole('admin'); setError(''); }}
-              className={`flex-1 py-3.5 text-sm transition-all ${role === 'admin' ? 'bg-[#1e3a5f] text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+              onClick={() => { setRole('admin'); setStudentId(''); }}
+              className={`flex-1 py-3.5 text-sm transition-all ${role === 'admin' ? 'bg-[#355872] text-white' : 'text-gray-500 hover:bg-[#7AAACE]/20'}`}
               style={{ fontWeight: 600 }}
             >
               Administrator
@@ -197,7 +233,7 @@ export function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#1e3a5f] hover:bg-[#2a4f7c] text-white py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-90"
+                className="w-full bg-[#355872] hover:bg-[#4a6b89] text-white py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-90"
                 style={{ fontWeight: 600 }}
               >
                 {submitting ? (
@@ -227,7 +263,7 @@ export function LoginPage() {
                 <button
                   onClick={handleBiometric}
                   disabled={biometricState === 'scanning'}
-                  className="w-full border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 rounded-xl py-3 flex items-center justify-center gap-3 transition-all disabled:opacity-60"
+                  className="w-full border-2 border-gray-200 hover:border-[#9CD5FF] hover:bg-[#7AAACE]/20 rounded-xl py-3 flex items-center justify-center gap-3 transition-all disabled:opacity-60"
                 >
                   <div className="relative">
                     <Fingerprint
@@ -268,9 +304,104 @@ export function LoginPage() {
               </Link>
             </p>
 
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => setShowResetPassword(true)}
+                className="text-blue-600 hover:text-blue-700 text-sm"
+                style={{ fontWeight: 600 }}
+              >
+                Forgot your password?
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {showResetPassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-800 text-lg" style={{ fontWeight: 600 }}>Reset Password</h3>
+              <button
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setResetEmail('');
+                  setResetMessage('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <p className="text-gray-600 text-sm mb-4">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div>
+                <label className="block text-gray-700 text-sm mb-1.5" style={{ fontWeight: 500 }}>
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+                    required
+                  />
+                </div>
+              </div>
+              
+              {resetMessage && (
+                <div className={`p-3 rounded-xl flex items-center gap-2 text-sm ${
+                  resetMessage.includes('sent') 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                  {resetMessage}
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setResetEmail('');
+                    setResetMessage('');
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl transition-colors text-sm"
+                  style={{ fontWeight: 600 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="flex-1 bg-[#07588A] hover:bg-[#064a79] text-white py-2.5 rounded-xl transition-colors text-sm disabled:opacity-90"
+                  style={{ fontWeight: 600 }}
+                >
+                  {resetLoading ? (
+                    <>
+                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

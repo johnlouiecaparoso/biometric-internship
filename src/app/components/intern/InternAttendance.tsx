@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Fingerprint, Scan, CheckCircle2, XCircle, Clock, LogIn, LogOut, Camera, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../../context/AuthContext';
-import { fetchBiometricSettings, fetchTodayAttendance, recordAttendanceScan } from '../../lib/supabaseApi';
+import { fetchAutoTimeoutSettings, fetchBiometricSettings, fetchTodayAttendance, recordAttendanceScan } from '../../lib/supabaseApi';
 import { verifyBiometricCredential } from '../../lib/biometricAuth';
 
 type ScanState = 'idle' | 'scanning' | 'success' | 'failed';
@@ -26,6 +26,8 @@ export function InternAttendance() {
   const [message, setMessage] = useState('');
   const [password, setPassword] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [autoTimeout, setAutoTimeout] = useState({ enabled: false, minutes: 480 });
+  const autoTimeoutTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -34,15 +36,16 @@ export function InternAttendance() {
 
   useEffect(() => {
     if (!user) return;
-    fetchBiometricSettings(user.id)
-      .then((settings) => {
+    void Promise.all([
+      fetchBiometricSettings(user.id),
+      fetchTodayAttendance(user.id),
+      fetchAutoTimeoutSettings(user.id),
+    ])
+      .then(([settings, record, timeoutSettings]) => {
         setCredentialId(settings?.credentialId ?? null);
         setFaceIdEnabled(settings?.faceId ?? false);
-      })
-      .catch(() => { setCredentialId(null); setFaceIdEnabled(false); });
+        setAutoTimeout(timeoutSettings);
 
-    fetchTodayAttendance(user.id)
-      .then((record) => {
         if (!record) {
           setTodayRecord({ timeIn: null, timeOut: null });
           setMode('time-in');
@@ -52,9 +55,53 @@ export function InternAttendance() {
         setMode(record.timeIn && !record.timeOut ? 'time-out' : 'time-in');
       })
       .catch(() => {
+        setCredentialId(null);
+        setFaceIdEnabled(false);
         setTodayRecord({ timeIn: null, timeOut: null });
       });
   }, [user]);
+
+  useEffect(() => {
+    const clearAutoTimer = () => {
+      if (autoTimeoutTimerRef.current !== null) {
+        window.clearTimeout(autoTimeoutTimerRef.current);
+        autoTimeoutTimerRef.current = null;
+      }
+    };
+
+    if (!user || !autoTimeout.enabled || !todayRecord.timeIn || todayRecord.timeOut) {
+      clearAutoTimer();
+      return clearAutoTimer;
+    }
+
+    const [inHour, inMinute] = todayRecord.timeIn.split(':').map(Number);
+    const start = new Date();
+    start.setHours(inHour, inMinute, 0, 0);
+    const autoAt = new Date(start.getTime() + autoTimeout.minutes * 60_000);
+    const delayMs = autoAt.getTime() - Date.now();
+
+    const runAutoTimeout = async () => {
+      if (!user) return;
+      try {
+        const updated = await recordAttendanceScan(user.id, 'time-out', 'fingerprint');
+        setTodayRecord({ timeIn: updated.timeIn, timeOut: updated.timeOut });
+        setMessage(`✓ Auto Time Out recorded at ${updated.timeOut ?? formatShortTime(new Date())}`);
+      } catch {
+        // If the student already timed out in another tab/device, ignore.
+      }
+    };
+
+    if (delayMs <= 0) {
+      void runAutoTimeout();
+      return clearAutoTimer;
+    }
+
+    autoTimeoutTimerRef.current = window.setTimeout(() => {
+      void runAutoTimeout();
+    }, delayMs);
+
+    return clearAutoTimer;
+  }, [user, autoTimeout.enabled, autoTimeout.minutes, todayRecord.timeIn, todayRecord.timeOut]);
 
   const formatTime = (d: Date) =>
     d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });

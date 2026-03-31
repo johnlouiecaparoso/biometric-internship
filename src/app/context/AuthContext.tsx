@@ -19,6 +19,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const PROFILE_CACHE_MS = 2000;
 
+function readBiometricHint(): { refreshToken: string; role: UserRole } | null {
+  try {
+    const raw = localStorage.getItem('biometric_login_hint');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { refreshToken?: string; role?: UserRole };
+    if (!parsed?.refreshToken || !parsed?.role) return null;
+    return { refreshToken: parsed.refreshToken, role: parsed.role };
+  } catch {
+    return null;
+  }
+}
+
+function writeBiometricHint(refreshToken: string, role: UserRole) {
+  localStorage.setItem('biometric_login_hint', JSON.stringify({ refreshToken, role }));
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,12 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    const handleAuthSession = (session: { user?: { id: string } | null } | null) => {
+    const handleAuthSession = (session: any) => {
       const seq = ++authChangeSeq;
       if (session?.user) {
+        const existingHint = readBiometricHint();
+        if (session.refresh_token && existingHint) {
+          writeBiometricHint(session.refresh_token, existingHint.role);
+        }
+
         // Keep the auth callback synchronous. Long async work here can hold
         // Supabase's internal auth lock and trigger lock-steal AbortErrors.
         void refreshUser(session.user)
+          .then((profile) => {
+            if (session.refresh_token && profile?.role) {
+              writeBiometricHint(session.refresh_token, profile.role);
+            }
+          })
           .catch(() => {
             if (!alive || seq !== authChangeSeq) return;
             lastFetch.current = null;

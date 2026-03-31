@@ -942,6 +942,16 @@ export async function fetchBiometricSettings(profileId: string): Promise<{ crede
   };
 }
 
+export async function fetchAutoTimeoutSettings(profileId: string): Promise<{ enabled: boolean; minutes: number }> {
+  const data = await fetchUserSettings(profileId);
+  const biometric = (data?.biometric ?? {}) as Record<string, any>;
+  const minutesRaw = Number(biometric.autoTimeoutMinutes ?? 480);
+  return {
+    enabled: Boolean(biometric.autoTimeoutEnabled ?? false),
+    minutes: Number.isFinite(minutesRaw) ? Math.min(1440, Math.max(1, Math.round(minutesRaw))) : 480,
+  };
+}
+
 export async function saveBiometricCredential(profileId: string, credentialId: string) {
   const settings = await fetchUserSettings(profileId);
   const notifications = settings?.notifications ?? {};

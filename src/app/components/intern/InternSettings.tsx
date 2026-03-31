@@ -28,7 +28,7 @@ export function InternSettings() {
   const { setDisplay: setDisplayCtx } = useDisplaySettings();
 
   const [notifs, setNotifs] = useState({ email: true, sms: false, browser: true, reminderTimeIn: true, reminderTimeOut: true, weeklyReport: false });
-  const [bio, setBio] = useState({ fingerprint: true, faceId: false, fallbackPin: true });
+  const [bio, setBio] = useState({ fingerprint: true, faceId: false, fallbackPin: true, autoTimeoutEnabled: false, autoTimeoutMinutes: 480 });
   const [display, setDisplay] = useState({ compactView: false, darkMode: false, show24h: false });
 
   const [notifsDirty, setNotifsDirty] = useState(false);
@@ -195,6 +195,30 @@ export function InternSettings() {
         {row('Fingerprint Authentication', 'Use fingerprint scanner for time in/out', bio.fingerprint, () => updateBio(b => ({ ...b, fingerprint: !b.fingerprint })))}
         {row('Face ID Authentication', 'Use facial recognition for time in/out', bio.faceId, () => updateBio(b => ({ ...b, faceId: !b.faceId })))}
         {row('Fallback PIN', 'Allow PIN entry if biometric fails', bio.fallbackPin, () => updateBio(b => ({ ...b, fallbackPin: !b.fallbackPin })))}
+        {row('Auto Time-Out', 'Automatically time out after a set duration from time in', bio.autoTimeoutEnabled, () => updateBio(b => ({ ...b, autoTimeoutEnabled: !b.autoTimeoutEnabled })))}
+        {bio.autoTimeoutEnabled && (
+          <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+            <label className="block text-gray-700 text-xs mb-1.5" style={{ fontWeight: 600 }}>
+              Auto Time-Out Duration (minutes)
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={1440}
+              step={1}
+              value={bio.autoTimeoutMinutes}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                updateBio((b) => ({
+                  ...b,
+                  autoTimeoutMinutes: Number.isFinite(next) ? Math.min(1440, Math.max(1, Math.round(next))) : 480,
+                }));
+              }}
+              className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 outline-none focus:border-blue-400"
+            />
+            <p className="text-xs text-gray-500 mt-2">Recommended: 480 minutes (8 hours)</p>
+          </div>
+        )}
         <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
           <p className="text-gray-700 text-xs mb-2" style={{ fontWeight: 600 }}>Device Enrollment</p>
           <p className="text-gray-500 text-xs mb-3">

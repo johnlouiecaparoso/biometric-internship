@@ -15,6 +15,11 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 const internNav: NavItem[] = [
   { label: 'Dashboard',  path: '/intern',            icon: <LayoutDashboard className="w-5 h-5" /> },
   { label: 'Attendance', path: '/intern/attendance',  icon: <Fingerprint className="w-5 h-5" /> },
@@ -44,6 +49,8 @@ export function AppLayout({ role }: AppLayoutProps) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true); // Always open on desktop
   const [notifOpen, setNotifOpen] = useState(false);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [time, setTime] = useState(new Date());
   const navItems = role === 'intern' ? internNav : adminNav;
   const notifRef = useRef<HTMLDivElement>(null);
@@ -70,11 +77,40 @@ export function AppLayout({ role }: AppLayoutProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [notifOpen]);
 
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || ((window.navigator as any).standalone === true);
+    setIsStandalone(standalone);
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const onAppInstalled = () => {
+      setDeferredInstallPrompt(null);
+      setIsStandalone(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+    window.addEventListener('appinstalled', onAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logout();
     } catch { /* ensure navigation always happens */ }
     navigate('/login', { replace: true });
+  };
+
+  const handleInstallApp = async () => {
+    if (!deferredInstallPrompt) return;
+    await deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
   };
 
   const formatTime = (d: Date) => ctxShortTime(d);
@@ -234,6 +270,16 @@ export function AppLayout({ role }: AppLayoutProps) {
               </div>
             )}
           </div>
+
+          {!isStandalone && deferredInstallPrompt && (
+            <button
+              onClick={handleInstallApp}
+              className="sm:hidden mr-2 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs border border-white/30"
+              style={{ fontWeight: 600 }}
+            >
+              Install App
+            </button>
+          )}
         </header>
 
         {/* Page content */}

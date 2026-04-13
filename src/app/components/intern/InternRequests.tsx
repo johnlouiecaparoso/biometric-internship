@@ -33,6 +33,8 @@ export function InternRequests() {
     timeOut: '',
     reason: '',
   });
+  const needsTimeIn = form.type === 'missing-time-in' || form.type === 'correction';
+  const needsTimeOut = form.type === 'missing-time-out' || form.type === 'correction';
 
   useEffect(() => {
     if (!user) return;
@@ -51,8 +53,8 @@ export function InternRequests() {
         type: form.type,
         date: form.date,
         reason: form.reason,
-        timeIn: form.timeIn,
-        timeOut: form.timeOut,
+        timeIn: needsTimeIn ? form.timeIn : '',
+        timeOut: needsTimeOut ? form.timeOut : '',
       });
       const updated = await fetchCorrectionRequests(user.id);
       setRequests(updated);
@@ -68,12 +70,12 @@ export function InternRequests() {
   };
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="max-w-3xl space-y-5 dark:[&_*]:text-white">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>Correction Requests</h1>
-          <p className="text-gray-500 text-sm">Submit requests for attendance corrections</p>
+          <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>Correction Requests</h1>
+          <p className="text-muted-foreground text-sm">Submit requests for attendance corrections</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -149,26 +151,36 @@ export function InternRequests() {
                   </div>
                 </div>
 
-                {form.type === 'correction' && (
+                {(needsTimeIn || needsTimeOut) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-gray-700 text-sm mb-1.5" style={{ fontWeight: 500 }}>Correct Time In</label>
-                      <input
-                        type="time"
-                        value={form.timeIn}
-                        onChange={e => setForm(f => ({ ...f, timeIn: e.target.value }))}
-                        className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-gray-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm mb-1.5" style={{ fontWeight: 500 }}>Correct Time Out</label>
-                      <input
-                        type="time"
-                        value={form.timeOut}
-                        onChange={e => setForm(f => ({ ...f, timeOut: e.target.value }))}
-                        className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-gray-700"
-                      />
-                    </div>
+                    {needsTimeIn && (
+                      <div>
+                        <label className="block text-gray-700 text-sm mb-1.5" style={{ fontWeight: 500 }}>
+                          {form.type === 'correction' ? 'Correct Time In' : 'Missing Time In'}
+                        </label>
+                        <input
+                          type="time"
+                          value={form.timeIn}
+                          onChange={e => setForm(f => ({ ...f, timeIn: e.target.value }))}
+                          className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-gray-700"
+                          required={needsTimeIn}
+                        />
+                      </div>
+                    )}
+                    {needsTimeOut && (
+                      <div>
+                        <label className="block text-gray-700 text-sm mb-1.5" style={{ fontWeight: 500 }}>
+                          {form.type === 'correction' ? 'Correct Time Out' : 'Missing Time Out'}
+                        </label>
+                        <input
+                          type="time"
+                          value={form.timeOut}
+                          onChange={e => setForm(f => ({ ...f, timeOut: e.target.value }))}
+                          className="w-full border border-gray-200 bg-gray-50 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-400 text-gray-700"
+                          required={needsTimeOut}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -185,7 +197,7 @@ export function InternRequests() {
                     required
                     minLength={20}
                   />
-                  <p className="text-gray-400 text-xs mt-1">{form.reason.length} characters</p>
+                  <p className="text-muted-foreground text-xs mt-1">{form.reason.length} characters</p>
                 </div>
 
                 <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
@@ -233,7 +245,7 @@ export function InternRequests() {
         </div>
         <div className="divide-y divide-gray-50">
           {requests.length === 0 ? (
-            <div className="py-12 text-center text-gray-400">
+            <div className="py-12 text-center text-muted-foreground">
               <FileEdit className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">No requests submitted yet</p>
             </div>
@@ -261,6 +273,23 @@ export function InternRequests() {
                           {new Date(req.submittedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
                       </p>
+                      {(req.requestedTimeIn || req.requestedTimeOut) && (
+                        <p className="text-gray-500 text-xs mb-1.5">
+                          {req.requestedTimeIn && (
+                            <span>
+                              Requested In: <span style={{ fontWeight: 500 }} className="text-gray-700">{req.requestedTimeIn}</span>
+                            </span>
+                          )}
+                          {req.requestedTimeIn && req.requestedTimeOut && (
+                            <span className="mx-1.5 text-gray-300">·</span>
+                          )}
+                          {req.requestedTimeOut && (
+                            <span>
+                              Requested Out: <span style={{ fontWeight: 500 }} className="text-gray-700">{req.requestedTimeOut}</span>
+                            </span>
+                          )}
+                        </p>
+                      )}
                       <p className="text-gray-500 text-xs line-clamp-2">{req.reason}</p>
                       {req.status === 'rejected' && (
                         <p className="text-red-500 text-xs mt-1.5" style={{ fontWeight: 500 }}>

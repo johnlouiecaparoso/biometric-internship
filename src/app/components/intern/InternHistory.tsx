@@ -46,11 +46,11 @@ export function InternHistory() {
   const totalHours = attendanceHistory.reduce((sum, r) => sum + r.hoursRendered, 0);
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="max-w-5xl space-y-5 dark:[&_*]:text-white">
       {/* Header */}
       <div>
-        <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>Attendance History</h1>
-        <p className="text-gray-500 text-sm">View your complete attendance records</p>
+        <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>Attendance History</h1>
+        <p className="text-muted-foreground text-sm">View your complete attendance records</p>
       </div>
 
       {/* Summary Cards */}

@@ -145,11 +145,11 @@ export function InternProfile() {
 
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="max-w-3xl space-y-5 dark:[&_*]:text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>My Profile</h1>
-          <p className="text-gray-500 text-sm">View and manage your intern profile</p>
+          <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>My Profile</h1>
+          <p className="text-muted-foreground text-sm">View and manage your intern profile</p>
         </div>
         {!editing ? (
           <button

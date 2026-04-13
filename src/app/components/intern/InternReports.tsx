@@ -139,12 +139,12 @@ export function InternReports() {
     }));
 
   return (
-    <div className="max-w-5xl space-y-5">
+    <div className="max-w-5xl space-y-5 dark:[&_*]:text-white">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>My Reports</h1>
-          <p className="text-gray-500 text-sm">View and export your attendance summary</p>
+          <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>My Reports</h1>
+          <p className="text-muted-foreground text-sm">View and export your attendance summary</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button

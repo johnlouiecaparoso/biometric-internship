@@ -51,6 +51,8 @@ export interface CorrectionRequest {
   type: 'missing-time-in' | 'missing-time-out' | 'correction';
   date: string;
   reason: string;
+  requestedTimeIn?: string | null;
+  requestedTimeOut?: string | null;
   status: 'pending' | 'approved' | 'rejected';
   submittedAt: string;
 }

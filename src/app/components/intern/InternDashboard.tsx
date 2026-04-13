@@ -29,7 +29,10 @@ export function InternDashboard() {
   if (!user) return null;
 
   const required = Number(user.requiredHours) || 0;
-  const rendered = Number(user.renderedHours) || 0;
+  const historyRendered = Math.round(
+    attendanceHistory.reduce((sum, r) => sum + Number(r.hoursRendered || 0), 0) * 100
+  ) / 100;
+  const rendered = Math.max(Number(user.renderedHours) || 0, historyRendered);
   const remaining = Math.max(0, required - rendered);
   const pct = required > 0 ? Math.min(100, Math.round((rendered / required) * 100)) : 0;
 
@@ -52,7 +55,7 @@ export function InternDashboard() {
       label: 'Hours Rendered', value: rendered, unit: 'hrs', icon: <CheckCircle2 className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#112D4E]',
     },
     {
-      label: 'Remaining Hours', value: remaining, unit: 'hrs', icon: <Hourglass className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#DBE2EF]',
+      label: 'Remaining Hours', value: remaining, unit: 'hrs', icon: <Hourglass className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#112D4E] dark:text-slate-200',
     },
     {
       label: 'Completion', value: pct, unit: '%', icon: <Award className="w-5 h-5" />, bg: 'bg-[#3F72AF]/20', text: 'text-[#3F72AF]',
@@ -64,9 +67,9 @@ export function InternDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-[#3F72AF]" style={{ fontWeight: 700, fontSize: '1.375rem' }}>
-            Good {now.getHours() < 12 ? 'Morning' : now.getHours() < 17 ? 'Afternoon' : 'Evening'}, {user.name.split(' ')[0]}! 👋
+            Good {now.getHours() < 12 ? 'Morning' : now.getHours() < 17 ? 'Afternoon' : 'Evening'}, {user.name.split(' ')[0]}!
           </h1>
-          <p className="text-[#112D4E] text-sm mt-0.5">{formatDate(now)}</p>
+          <p className="text-black dark:text-slate-200 text-sm mt-0.5">{formatDate(now)}</p>
         </div>
         <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-[#DBE2EF]/30 rounded-xl px-4 py-2.5 shadow-sm">
           <Clock className="w-4 h-4 text-[#3F72AF]" />
@@ -82,9 +85,9 @@ export function InternDashboard() {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-foreground" style={{ fontWeight: 700, fontSize: '1.75rem' }}>{Number(s.value).toFixed(2) ?? '0.00'}</span>
-              <span className="text-[#112D4E] text-sm">{s.unit}</span>
+              <span className="text-black dark:text-slate-200 text-sm">{s.unit}</span>
             </div>
-            <p className="text-[#DBE2EF]/70 text-xs mt-0.5">{s.label}</p>
+            <p className="text-gray-700 dark:text-slate-300 text-xs mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
@@ -93,7 +96,7 @@ export function InternDashboard() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-[#3F72AF]" style={{ fontWeight: 600 }}>Internship Progress</h3>
-            <p className="text-[#112D4E] text-sm">{rendered} of {required} hours completed</p>
+            <p className="text-black dark:text-slate-200 text-sm">{rendered} of {required} hours completed</p>
           </div>
           <span
             className={`text-sm px-3 py-1 rounded-full ${pct >= 100 ? 'bg-[#3F72AF]/20 text-[#3F72AF]' : pct >= 75 ? 'bg-[#112D4E]/20 text-[#112D4E]' : 'bg-[#DBE2EF]/30 text-[#3F72AF]'}`}
@@ -110,7 +113,7 @@ export function InternDashboard() {
             style={{ width: `${pct}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-[#DBE2EF]/60 mt-1.5">
+        <div className="flex justify-between text-xs text-gray-600 dark:text-slate-400 mt-1.5">
           <span>0 hrs</span>
           <span>{required} hrs</span>
         </div>
@@ -120,7 +123,7 @@ export function InternDashboard() {
         <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[#3F72AF]" style={{ fontWeight: 600 }}>Today's Attendance</h3>
-            <span className="text-xs text-[#DBE2EF]/60">{now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+            <span className="text-xs text-gray-600 dark:text-slate-400">{now.toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
           <div className="space-y-3">
             <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${todayRecord?.timeIn ? 'bg-primary/20' : 'bg-muted'}`}>
@@ -130,7 +133,7 @@ export function InternDashboard() {
                 </div>
                 <div>
                   <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>Time In</p>
-                  <p className={`text-xs ${todayRecord?.timeIn ? 'text-[#3F72AF]' : 'text-[#DBE2EF]/60'}`}>
+                  <p className={`text-xs ${todayRecord?.timeIn ? 'text-[#3F72AF]' : 'text-gray-600 dark:text-slate-400'}`}>
                     {todayRecord?.timeIn ? 'Recorded successfully' : 'Not yet recorded'}
                   </p>
                 </div>
@@ -146,7 +149,7 @@ export function InternDashboard() {
                 </div>
                 <div>
                   <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>Time Out</p>
-                  <p className={`text-xs ${todayRecord?.timeOut ? 'text-[#112D4E]' : 'text-[#DBE2EF]/60'}`}>
+                  <p className={`text-xs ${todayRecord?.timeOut ? 'text-[#112D4E] dark:text-slate-200' : 'text-gray-600 dark:text-slate-400'}`}>
                     {todayRecord?.timeOut ? 'Recorded successfully' : 'Not yet recorded'}
                   </p>
                 </div>
@@ -167,7 +170,7 @@ export function InternDashboard() {
           </div>
           <div className="space-y-2">
             {recentHistory.length === 0 ? (
-              <p className="text-[#DBE2EF]/60 text-sm text-center py-4">No recent attendance records</p>
+              <p className="text-gray-600 dark:text-slate-400 text-sm text-center py-4">No recent attendance records</p>
             ) : (
               recentHistory.map((record) => (
                 <div key={record.id} className="flex items-center justify-between rounded-lg px-3 py-2 bg-muted">
@@ -185,7 +188,7 @@ export function InternDashboard() {
                       <p className="text-foreground text-sm" style={{ fontWeight: 500 }}>
                         {new Date(record.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
-                      <p className="text-[#DBE2EF]/60 text-xs">
+                      <p className="text-gray-600 dark:text-slate-400 text-xs">
                         {record.timeIn || '–'} → {record.timeOut || '–'}
                       </p>
                     </div>

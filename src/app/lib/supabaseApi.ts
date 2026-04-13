@@ -19,6 +19,75 @@ const normalizeTime = (value: string | null) => {
   return value.slice(0, 5);
 };
 
+const timeToMinutes = (value: string | null): number | null => {
+  const normalized = normalizeTime(value);
+  if (!normalized) return null;
+  const [hh, mm] = normalized.split(':').map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  return hh * 60 + mm;
+};
+
+async function computeAttendanceStatusAndHours(
+  timeIn: string | null,
+  timeOut: string | null
+): Promise<{ status: 'present' | 'late' | 'undertime' | 'absent'; hoursRendered: number }> {
+  if (!timeIn) return { status: 'absent', hoursRendered: 0 };
+
+  const sysSettings = await fetchSystemSettings().catch(() => null);
+  const schedule = (sysSettings?.schedule ?? {}) as Record<string, string>;
+  const schedTimeIn = schedule.timeIn ?? '08:00';
+  const schedTimeOut = schedule.timeOut ?? '17:00';
+  const graceMinutes = parseInt(schedule.graceMinutes ?? '15', 10);
+  const undertimeGraceMinutes = parseInt(schedule.undertimeMinutes ?? '60', 10);
+
+  const inMinutes = timeToMinutes(timeIn) ?? 0;
+  const thresholdMinutes = (timeToMinutes(schedTimeIn) ?? 8 * 60) + graceMinutes;
+  let status: 'present' | 'late' | 'undertime' | 'absent' = inMinutes > thresholdMinutes ? 'late' : 'present';
+
+  if (!timeOut) {
+    return { status, hoursRendered: 0 };
+  }
+
+  const outMinutes = timeToMinutes(timeOut) ?? inMinutes;
+  const renderedMinutes = Math.max(0, outMinutes - inMinutes);
+  const hoursRendered = Math.round((renderedMinutes / 60) * 100) / 100;
+
+  const expectedMinutes = (timeToMinutes(schedTimeOut) ?? 17 * 60) - (timeToMinutes(schedTimeIn) ?? 8 * 60);
+  const minHours = (expectedMinutes - undertimeGraceMinutes) / 60;
+  if (hoursRendered < minHours) status = 'undertime';
+
+  return { status, hoursRendered };
+}
+
+async function syncInternshipRenderedHours(internProfileId: string): Promise<void> {
+  const { data: rows, error: rowsError } = await supabase
+    .from('attendance_records')
+    .select('hours_rendered')
+    .eq('intern_profile_id', internProfileId);
+
+  if (rowsError) throw rowsError;
+
+  const totalRenderedHours = Math.round(
+    (rows ?? []).reduce((sum: number, row: any) => sum + Number(row.hours_rendered ?? 0), 0) * 100
+  ) / 100;
+
+  const { data: internship, error: internshipError } = await supabase
+    .from('internships')
+    .select('id')
+    .eq('intern_profile_id', internProfileId)
+    .maybeSingle();
+
+  if (internshipError) throw internshipError;
+  if (!internship) return;
+
+  const { error: updateError } = await supabase
+    .from('internships')
+    .update({ rendered_hours: totalRenderedHours })
+    .eq('id', internship.id);
+
+  if (updateError) throw updateError;
+}
+
 const toDisplayDate = (value?: string | null) => value ?? '';
 
 function mapUser(profile: any): User {
@@ -665,6 +734,8 @@ export async function fetchCorrectionRequests(internProfileId: string): Promise<
       intern_profile_id,
       request_type,
       request_date,
+      requested_time_in,
+      requested_time_out,
       reason,
       status,
       submitted_at,
@@ -682,6 +753,8 @@ export async function fetchCorrectionRequests(internProfileId: string): Promise<
     type: row.request_type,
     date: row.request_date,
     reason: row.reason,
+    requestedTimeIn: normalizeTime(row.requested_time_in),
+    requestedTimeOut: normalizeTime(row.requested_time_out),
     status: row.status,
     submittedAt: row.submitted_at,
   }));
@@ -695,6 +768,8 @@ export async function fetchAllCorrectionRequests(): Promise<CorrectionRequest[]>
       intern_profile_id,
       request_type,
       request_date,
+      requested_time_in,
+      requested_time_out,
       reason,
       status,
       submitted_at,
@@ -711,6 +786,8 @@ export async function fetchAllCorrectionRequests(): Promise<CorrectionRequest[]>
     type: row.request_type,
     date: row.request_date,
     reason: row.reason,
+    requestedTimeIn: normalizeTime(row.requested_time_in),
+    requestedTimeOut: normalizeTime(row.requested_time_out),
     status: row.status,
     submittedAt: row.submitted_at,
   }));
@@ -720,12 +797,84 @@ export async function updateCorrectionRequestStatus(
   requestId: string,
   status: 'approved' | 'rejected'
 ): Promise<void> {
-  const { error } = await supabase
+  const { data: request, error: requestError } = await supabase
+    .from('correction_requests')
+    .select('id, intern_profile_id, request_type, request_date, requested_time_in, requested_time_out')
+    .eq('id', requestId)
+    .maybeSingle();
+
+  if (requestError) throw requestError;
+  if (!request) throw new Error('Correction request not found.');
+
+  if (status === 'approved') {
+    const { data: existingAttendance, error: attendanceLookupError } = await supabase
+      .from('attendance_records')
+      .select('id, time_in, time_out, biometric_type')
+      .eq('intern_profile_id', request.intern_profile_id)
+      .eq('attendance_date', request.request_date)
+      .maybeSingle();
+
+    if (attendanceLookupError) throw attendanceLookupError;
+
+    let nextTimeIn = normalizeTime(existingAttendance?.time_in ?? null);
+    let nextTimeOut = normalizeTime(existingAttendance?.time_out ?? null);
+
+    if (request.request_type === 'missing-time-in') {
+      nextTimeIn = normalizeTime(request.requested_time_in ?? null);
+      if (!nextTimeIn) throw new Error('Missing Time In approval requires a requested time in.');
+    }
+
+    if (request.request_type === 'missing-time-out') {
+      nextTimeOut = normalizeTime(request.requested_time_out ?? null);
+      if (!nextTimeOut) throw new Error('Missing Time Out approval requires a requested time out.');
+      if (!nextTimeIn) throw new Error('Missing Time Out approval requires an existing or corrected time in.');
+    }
+
+    if (request.request_type === 'correction') {
+      if (request.requested_time_in) nextTimeIn = normalizeTime(request.requested_time_in);
+      if (request.requested_time_out) nextTimeOut = normalizeTime(request.requested_time_out);
+    }
+
+    if (!nextTimeIn && !nextTimeOut) {
+      throw new Error('Approved request did not provide attendance times to apply.');
+    }
+    if (nextTimeOut && !nextTimeIn) {
+      throw new Error('Cannot apply a time out without a corresponding time in.');
+    }
+
+    const { status: computedStatus, hoursRendered } = await computeAttendanceStatusAndHours(nextTimeIn, nextTimeOut);
+    const attendancePayload = {
+      intern_profile_id: request.intern_profile_id,
+      attendance_date: request.request_date,
+      time_in: nextTimeIn,
+      time_out: nextTimeOut,
+      hours_rendered: hoursRendered,
+      status: computedStatus,
+      biometric_type: existingAttendance?.biometric_type ?? 'fingerprint',
+    };
+
+    if (existingAttendance?.id) {
+      const { error: updateAttendanceError } = await supabase
+        .from('attendance_records')
+        .update(attendancePayload)
+        .eq('id', existingAttendance.id);
+      if (updateAttendanceError) throw updateAttendanceError;
+    } else {
+      const { error: insertAttendanceError } = await supabase
+        .from('attendance_records')
+        .insert(attendancePayload);
+      if (insertAttendanceError) throw insertAttendanceError;
+    }
+
+    await syncInternshipRenderedHours(request.intern_profile_id);
+  }
+
+  const { error: statusError } = await supabase
     .from('correction_requests')
     .update({ status })
     .eq('id', requestId);
 
-  if (error) throw error;
+  if (statusError) throw statusError;
 }
 
 export async function createCorrectionRequest(

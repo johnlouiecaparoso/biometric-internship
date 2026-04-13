@@ -18,6 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const PROFILE_CACHE_MS = 2000;
+const AUTH_PROFILE_CACHE_KEY = 'auth_profile_cache_v1';
 
 function readBiometricHint(): { refreshToken: string; role: UserRole } | null {
   try {
@@ -35,8 +36,30 @@ function writeBiometricHint(refreshToken: string, role: UserRole) {
   localStorage.setItem('biometric_login_hint', JSON.stringify({ refreshToken, role }));
 }
 
+function readCachedProfile(authId: string): User | null {
+  try {
+    const raw = localStorage.getItem(AUTH_PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { authId?: string; user?: User };
+    if (parsed?.authId !== authId || !parsed.user) return null;
+    return parsed.user;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(authId: string, user: User | null) {
+  if (!user) return;
+  localStorage.setItem(AUTH_PROFILE_CACHE_KEY, JSON.stringify({ authId, user }));
+}
+
+function clearCachedProfile() {
+  localStorage.removeItem(AUTH_PROFILE_CACHE_KEY);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [sessionActive, setSessionActive] = useState(false);
   const [loading, setLoading] = useState(true);
   const lastFetch = useRef<{ authId: string; user: User | null; at: number } | null>(null);
 
@@ -52,10 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const currentUser = await fetchCurrentUser(sessionUser ?? (authId ? { id: authId } : undefined));
     let resolvedUser = currentUser;
+    if (!resolvedUser && authId) {
+      resolvedUser = readCachedProfile(authId);
+    }
     if (resolvedUser) {
       const stored = localStorage.getItem(`intern_avatar_${resolvedUser.id}`);
       if (stored) resolvedUser = { ...resolvedUser, avatarUrl: stored };
     }
+    if (authId && resolvedUser) writeCachedProfile(authId, resolvedUser);
     if (authId) lastFetch.current = { authId, user: resolvedUser, at: Date.now() };
     else lastFetch.current = null;
     setUser(resolvedUser);
@@ -77,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthSession = (session: any) => {
       const seq = ++authChangeSeq;
       if (session?.user) {
+        setSessionActive(true);
         const existingHint = readBiometricHint();
         if (session.refresh_token && existingHint) {
           writeBiometricHint(session.refresh_token, existingHint.role);
@@ -92,8 +120,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
           .catch(() => {
             if (!alive || seq !== authChangeSeq) return;
-            lastFetch.current = null;
-            setUser(null);
+            const cached = readCachedProfile(session.user.id);
+            if (cached) {
+              setUser(cached);
+              lastFetch.current = { authId: session.user.id, user: cached, at: Date.now() };
+            }
           })
           .finally(() => {
             if (seq !== authChangeSeq) return;
@@ -103,8 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // SIGNED_OUT or no session — clear user directly without any network call
+      setSessionActive(false);
       lastFetch.current = null;
       setUser(null);
+      clearCachedProfile();
       finalizeInitialLoad();
     };
 
@@ -144,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) return { success: false, error: error.message };
+      setSessionActive(true);
       // Use session we already have so we don't call getUser() again and avoid duplicate profile fetch
       const profile = await refreshUser(data?.user ?? undefined);
       if (!profile) return { success: false, error: 'Account profile not found. Please contact your administrator.' };
@@ -156,7 +190,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     lastFetch.current = null;
+    setSessionActive(false);
     localStorage.removeItem('biometric_login_hint');
+    clearCachedProfile();
     setUser(null); // clear immediately so UI responds at once
     try {
       await supabase.auth.signOut(); // global scope — revokes server token
@@ -172,7 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, updateHours, updateUser, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: sessionActive, updateHours, updateUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

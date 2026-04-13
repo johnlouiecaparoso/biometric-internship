@@ -165,10 +165,10 @@ export function InternSettings() {
   );
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-2xl space-y-5 dark:[&_*]:text-white">
       <div>
-        <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>Settings</h1>
-        <p className="text-gray-500 text-sm">Manage your preferences and account settings</p>
+        <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>Settings</h1>
+        <p className="text-muted-foreground text-sm">Manage your preferences and account settings</p>
       </div>
 
       {saveError && (

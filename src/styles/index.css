@@ -48,80 +48,104 @@ html, body {
 }
 
 /* ============================================================
-   Dark Mode – Global Structural Overrides
-   All components use hardcoded Tailwind gray/white classes.
-   These overrides remap them when html.dark is present.
+   Color Palette Management
+   Single source of truth: theme.css CSS variables
+   This file handles component-specific text/background overrides only
    ============================================================ */
 
-html.dark {
+html, body {
+  color-scheme: light;
+}
+
+html.dark, 
+html.dark body {
   color-scheme: dark;
 }
 
-/* — Backgrounds — */
-html.dark .bg-slate-50  { background-color: #0f172a !important; }
-html.dark .bg-white     { background-color: #1e293b !important; }
-html.dark .bg-gray-50   { background-color: #162032 !important; }
-html.dark .bg-gray-100  { background-color: #1e293b !important; }
-html.dark .bg-gray-200  { background-color: #334155 !important; }
-
-/* — Text — */
-html.dark .text-gray-900 { color: #f1f5f9 !important; }
-html.dark .text-gray-800 { color: #e2e8f0 !important; }
-html.dark .text-gray-700 { color: #cbd5e1 !important; }
-html.dark .text-gray-600 { color: #b8c4d6 !important; }
-html.dark .text-gray-500 { color: #9fb0c8 !important; }
-html.dark .text-gray-400 { color: #8ea3bf !important; }
-
-/* — Borders — */
-html.dark .border-gray-50  { border-color: #1e293b !important; }
-html.dark .border-gray-100 { border-color: #334155 !important; }
-html.dark .border-gray-200 { border-color: #475569 !important; }
-html.dark .border-gray-300 { border-color: #64748b !important; }
-
-/* — Hover states — */
-html.dark .hover\:bg-gray-50:hover  { background-color: #1e293b !important; }
-html.dark .hover\:bg-gray-100:hover { background-color: #334155 !important; }
-
-/* — Form inputs — */
-html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]),
-html.dark textarea,
-html.dark select {
-  background-color: #0f172a !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
+/* Light mode: ensure stat cards have proper contrast */
+:not(.dark) .bg-slate-600,
+:not(.dark) .bg-gray-600 {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border: 1px solid #e2e8f0;
 }
 
-/* — Colored status / badge backgrounds — */
-html.dark .bg-emerald-50  { background-color: #0a2e1e !important; }
-html.dark .bg-emerald-100 { background-color: #14532d !important; }
-html.dark .bg-blue-50     { background-color: #0c2340 !important; }
-html.dark .bg-blue-100    { background-color: #1e3a5f !important; }
-html.dark .bg-amber-50    { background-color: #2d1a00 !important; }
-html.dark .bg-amber-100   { background-color: #451a03 !important; }
-html.dark .bg-red-50      { background-color: #2d0f0f !important; }
-html.dark .bg-red-100     { background-color: #450a0a !important; }
-html.dark .bg-orange-100  { background-color: #431407 !important; }
-html.dark .bg-violet-50   { background-color: #1e1635 !important; }
+/* Light mode: secondary text colors */
+:not(.dark) .text-gray-500,
+:not(.dark) .text-gray-400,
+:not(.dark) .text-muted-foreground {
+  color: #64748b !important;
+}
 
-/* — Colored status / badge text — */
-html.dark .text-emerald-700 { color: #34d399 !important; }
-html.dark .text-emerald-600 { color: #6ee7b7 !important; }
-html.dark .text-amber-700   { color: #fcd34d !important; }
-html.dark .text-amber-600   { color: #fde68a !important; }
-html.dark .text-red-700     { color: #fca5a5 !important; }
-html.dark .text-orange-700  { color: #fb923c !important; }
-html.dark .text-blue-800    { color: #93c5fd !important; }
-html.dark .text-blue-600    { color: #60a5fa !important; }
-html.dark .text-violet-600  { color: #c4b5fd !important; }
+/* Dark mode: stat cards and panels */
+html.dark .bg-slate-600,
+html.dark .bg-gray-600 {
+  background-color: #1a2332 !important;
+  color: #e8eef5 !important;
+  border: 1px solid #2d3f52;
+}
 
-/* — Colored borders — */
-html.dark .border-emerald-200 { border-color: #065f46 !important; }
-html.dark .border-blue-100    { border-color: #1e3a8a !important; }
-html.dark .border-blue-200    { border-color: #1d4ed8 !important; }
-html.dark .border-amber-100   { border-color: #92400e !important; }
-html.dark .border-red-200     { border-color: #7f1d1d !important; }
+/* Dark mode: all white backgrounds become dark */
+html.dark .bg-white {
+  background-color: #1a2332 !important;
+}
 
-/* — Scrollbar in dark mode — */
+html.dark .bg-slate-50,
+html.dark .bg-gray-50 {
+  background-color: #0f1419 !important;
+}
+
+/* Dark mode: body and main content */
+html.dark body {
+  background-color: #0f1419 !important;
+  color: #e8eef5 !important;
+}
+
+html.dark main {
+  background-color: #0f1419 !important;
+}
+
+/* Dark mode: secondary text colors */
+html.dark .text-gray-500,
+html.dark .text-gray-400,
+html.dark .text-gray-600,
+html.dark .text-muted-foreground {
+  color: #cbd5e1 !important;
+}
+
+/* Dark mode: borders */
+html.dark .border-gray-50,
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-300 {
+  border-color: #2d3f52 !important;
+}
+
+html.dark .border-blue-100    { border-color: #2d5a8f !important; }
+html.dark .border-blue-200    { border-color: #3a6fb5 !important; }
+html.dark .border-amber-100   { border-color: #9d6b1f !important; }
+html.dark .border-red-200     { border-color: #a63a3a !important; }
+
+/* Dark mode: card styling */
+.dark [class*="card"],
+.dark [class*="rounded-lg"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-color: #2d3f52;
+}
+
+/* Light mode: card styling */
+:not(.dark) [class*="card"],
+:not(.dark) [class*="rounded-lg"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.05);
+  border-color: #e2e8f0;
+}
+
+/* Scrollbar styling */
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.15);
+  border-radius: 4px;
+}
+
 html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(255,255,255,0.12);
+  background-color: rgba(255,255,255,0.15);
 }

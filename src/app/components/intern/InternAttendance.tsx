@@ -19,6 +19,7 @@ export function InternAttendance() {
   const [now, setNow] = useState(new Date());
   const [scanState, setScanState] = useState<ScanState>('idle');
   const [mode, setMode] = useState<ScanMode>('time-in');
+  const [lastSuccessfulMode, setLastSuccessfulMode] = useState<ScanMode>('time-in');
   const [bioType, setBioType] = useState<BiometricType>('fingerprint');
   const [credentialId, setCredentialId] = useState<string | null>(null);
   const [faceIdEnabled, setFaceIdEnabled] = useState(false);
@@ -134,6 +135,7 @@ export function InternAttendance() {
     }
     setMessage('');
     setScanState('scanning');
+    const actionMode = mode;
     setTimeout(async () => {
       if (!user) {
         setScanState('failed');
@@ -149,10 +151,11 @@ export function InternAttendance() {
 
       try {
         await verifyBiometricCredential(credentialId);
-        const updated = await recordAttendanceScan(user.id, mode, bioType);
+        const updated = await recordAttendanceScan(user.id, actionMode, bioType);
         setScanState('success');
+        setLastSuccessfulMode(actionMode);
         setTodayRecord({ timeIn: updated.timeIn, timeOut: updated.timeOut });
-        if (mode === 'time-in') {
+        if (actionMode === 'time-in') {
           setMessage(`✓ Time In recorded at ${updated.timeIn ?? formatShortTime(new Date())}`);
           setMode('time-out');
         } else {
@@ -199,7 +202,7 @@ export function InternAttendance() {
   const scannerLabel = {
     idle: bioType === 'face' ? 'Tap to scan face' : 'Tap to scan fingerprint',
     scanning: bioType === 'face' ? 'Hold still, scanning face...' : 'Keep finger on scanner...',
-    success: mode === 'time-in' ? 'Time In Recorded!' : 'Time Out Recorded!',
+    success: lastSuccessfulMode === 'time-in' ? 'Time In Recorded!' : 'Time Out Recorded!',
     failed: 'Scan failed. Try again.',
   };
 
@@ -211,11 +214,11 @@ export function InternAttendance() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6 dark:[&_*]:text-white">
       {/* Header */}
       <div>
-        <h1 className="text-gray-900" style={{ fontWeight: 700, fontSize: '1.375rem' }}>Attendance</h1>
-        <p className="text-gray-500 text-sm">Use biometric authentication to record your attendance</p>
+        <h1 style={{ fontWeight: 700, fontSize: '1.375rem' }}>Attendance</h1>
+        <p className="text-muted-foreground text-sm">Use biometric authentication to record your attendance</p>
       </div>
 
       {/* Live Clock */}
@@ -239,21 +242,21 @@ export function InternAttendance() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Biometric Scanner */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="text-gray-800 mb-4" style={{ fontWeight: 600 }}>Biometric Scanner</h3>
+        <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-6 shadow-sm border border-border dark:bg-card dark:border-border">
+          <h3 style={{ fontWeight: 600 }}>Biometric Scanner</h3>
 
           {/* Bio Type Toggle */}
-          <div className="flex bg-gray-100 rounded-xl p-1 mb-5">
+          <div className="flex bg-gray-100 dark:bg-slate-700 rounded-xl p-1 mb-5">
             <button
               onClick={() => { setBioType('fingerprint'); setMessage(''); setScanState('idle'); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${bioType === 'fingerprint' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${bioType === 'fingerprint' ? 'bg-white dark:bg-slate-600 shadow text-foreground dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
               style={{ fontWeight: bioType === 'fingerprint' ? 600 : 400 }}
             >
               <Fingerprint className="w-4 h-4" /> Fingerprint
             </button>
             <button
               onClick={() => { setBioType('face'); setMessage(''); setScanState('idle'); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${bioType === 'face' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm transition-all ${bioType === 'face' ? 'bg-white dark:bg-slate-600 shadow text-foreground dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
               style={{ fontWeight: bioType === 'face' ? 600 : 400 }}
             >
               <Camera className="w-4 h-4" /> Face ID
@@ -264,10 +267,10 @@ export function InternAttendance() {
           <div
             onClick={handleScan}
             className={`relative flex flex-col items-center justify-center h-52 rounded-2xl border-2 cursor-pointer transition-all ${
-              scanState === 'idle' ? 'border-blue-200 hover:border-blue-400 bg-blue-50/30' :
-              scanState === 'scanning' ? 'border-blue-400 bg-blue-50' :
-              scanState === 'success' ? 'border-emerald-400 bg-emerald-50' :
-              'border-red-300 bg-red-50'
+              scanState === 'idle' ? 'border-blue-200 dark:border-blue-400 hover:border-blue-400 dark:hover:border-blue-300 bg-blue-50/30 dark:bg-blue-950/30' :
+              scanState === 'scanning' ? 'border-blue-400 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50' :
+              scanState === 'success' ? 'border-emerald-400 dark:border-emerald-400 bg-emerald-50 dark:bg-emerald-950/50' :
+              'border-red-300 dark:border-red-400 bg-red-50 dark:bg-red-950/50'
             }`}
           >
             {/* Pulse rings */}
@@ -299,10 +302,10 @@ export function InternAttendance() {
               >
                 {scannerIcon[scanState]}
                 <span className={`text-sm text-center ${
-                  scanState === 'success' ? 'text-emerald-600' :
-                  scanState === 'failed' ? 'text-red-500' :
-                  scanState === 'scanning' ? 'text-blue-600' :
-                  'text-gray-500'
+                  scanState === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
+                  scanState === 'failed' ? 'text-red-500 dark:text-red-400' :
+                  scanState === 'scanning' ? 'text-blue-600 dark:text-blue-400' :
+                  'text-gray-500 dark:text-gray-400'
                 }`} style={{ fontWeight: 500 }}>
                   {scannerLabel[scanState]}
                 </span>
@@ -313,19 +316,19 @@ export function InternAttendance() {
           {/* Password fallback – always available below the scanner */}
           <div className="mt-3">
             <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400">or use password</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+              <span className="text-xs text-gray-400 dark:text-gray-500">or use password</span>
+              <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
             </div>
             <form onSubmit={handlePasswordSubmit} className="flex gap-2">
               <div className="relative flex-1">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="password"
                   placeholder="Enter your password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:border-blue-400"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-700 text-sm outline-none focus:border-blue-400 dark:focus:border-blue-400 text-foreground dark:text-white dark:placeholder-gray-500"
                   autoComplete="current-password"
                 />
               </div>
@@ -362,10 +365,10 @@ export function InternAttendance() {
               disabled={!todayRecord.timeIn || !!todayRecord.timeOut}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all ${
                 mode === 'time-out' && todayRecord.timeIn && !todayRecord.timeOut
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                  ? 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-orange-900'
                   : !todayRecord.timeIn || todayRecord.timeOut
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-600'
               }`}
               style={{ fontWeight: 600 }}
             >
@@ -379,7 +382,7 @@ export function InternAttendance() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               className={`mt-3 p-3 rounded-xl text-sm text-center ${
-                message.startsWith('✓') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                message.startsWith('✓') ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
               }`}
               style={{ fontWeight: 500 }}
             >
@@ -390,58 +393,58 @@ export function InternAttendance() {
 
         {/* Today's Record */}
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-            <h3 className="text-gray-800 mb-4" style={{ fontWeight: 600 }}>Today's Record</h3>
+          <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-border dark:bg-card dark:border-border">
+            <h3 style={{ fontWeight: 600 }}>Today's Record</h3>
 
             <div className="space-y-3">
               {/* Time In */}
-              <div className={`flex items-center justify-between rounded-xl px-4 py-3.5 ${todayRecord.timeIn ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+              <div className={`flex items-center justify-between rounded-xl px-4 py-3.5 ${todayRecord.timeIn ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${todayRecord.timeIn ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${todayRecord.timeIn ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                     <LogIn className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-gray-700 text-sm" style={{ fontWeight: 500 }}>Time In</p>
-                    <p className={`text-xs ${todayRecord.timeIn ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <p style={{ fontWeight: 500 }}>Time In</p>
+                    <p className={`text-xs ${todayRecord.timeIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
                       {todayRecord.timeIn ? 'Recorded' : 'Not yet recorded'}
                     </p>
                   </div>
                 </div>
-                <span className={`text-sm tabular-nums ${todayRecord.timeIn ? 'text-gray-800' : 'text-gray-400'}`} style={{ fontWeight: 700 }}>
+                <span className={`text-sm tabular-nums ${todayRecord.timeIn ? 'text-foreground dark:text-white' : 'text-muted-foreground'}`} style={{ fontWeight: 700 }}>
                   {todayRecord.timeIn ?? '–:–– ––'}
                 </span>
               </div>
 
               {/* Time Out */}
-              <div className={`flex items-center justify-between rounded-xl px-4 py-3.5 ${todayRecord.timeOut ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50 border border-gray-200'}`}>
+              <div className={`flex items-center justify-between rounded-xl px-4 py-3.5 ${todayRecord.timeOut ? 'bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800' : 'bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-gray-700'}`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${todayRecord.timeOut ? 'bg-orange-500' : 'bg-gray-300'}`}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${todayRecord.timeOut ? 'bg-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                     <LogOut className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-gray-700 text-sm" style={{ fontWeight: 500 }}>Time Out</p>
-                    <p className={`text-xs ${todayRecord.timeOut ? 'text-orange-600' : 'text-gray-400'}`}>
+                    <p style={{ fontWeight: 500 }}>Time Out</p>
+                    <p className={`text-xs ${todayRecord.timeOut ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground'}`}>
                       {todayRecord.timeOut ? 'Recorded' : 'Not yet recorded'}
                     </p>
                   </div>
                 </div>
-                <span className={`text-sm tabular-nums ${todayRecord.timeOut ? 'text-gray-800' : 'text-gray-400'}`} style={{ fontWeight: 700 }}>
+                <span className={`text-sm tabular-nums ${todayRecord.timeOut ? 'text-foreground dark:text-white' : 'text-muted-foreground'}`} style={{ fontWeight: 700 }}>
                   {todayRecord.timeOut ?? '–:–– ––'}
                 </span>
               </div>
 
               {/* Total Hours */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3.5 flex items-center justify-between">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl px-4 py-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center">
                     <Clock className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-gray-700 text-sm" style={{ fontWeight: 500 }}>Hours Today</p>
-                    <p className="text-xs text-blue-600">{todayRecord.timeOut ? 'Shift complete' : 'In progress'}</p>
+                    <p style={{ fontWeight: 500 }}>Hours Today</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">{todayRecord.timeOut ? 'Shift complete' : 'In progress'}</p>
                   </div>
                 </div>
-                <span className="text-blue-700 text-sm tabular-nums" style={{ fontWeight: 700 }}>{calcHours()}</span>
+                <span className="text-blue-700 dark:text-blue-400 text-sm tabular-nums" style={{ fontWeight: 700 }}>{calcHours()}</span>
               </div>
             </div>
           </div>
